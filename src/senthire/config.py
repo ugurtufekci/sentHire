@@ -39,6 +39,15 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 20 * 1024 * 1024
     max_pdf_pages: int = 25
 
+    # --- batch (economy) transport: LLM tokens bill at 50% (docs/07 §5) ---
+    # First poll is short because small batches often finish in seconds; later
+    # polls back off to a steady interval. Total wait is capped so a stuck batch
+    # fails the run instead of polling forever (the API's own ceiling is 24h).
+    batch_poll_initial_seconds: int = 20
+    batch_poll_interval_seconds: int = 60
+    batch_max_wait_seconds: int = 24 * 3600
+    batch_discount: float = 0.5
+
     # --- screening funnel knobs (docs/02 Stage 5 selection policy) ---
     shortlist_top_k: int = 10
     deep_band_extra: int = 10  # decision band = ranks 1..(top_k + extra)

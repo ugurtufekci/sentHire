@@ -8,8 +8,10 @@ import { api } from "@/lib/api";
 import {
   BAND_LABEL,
   RUN_STATUS_LABEL,
+  STAGE_LABEL,
   bandClass,
   confidenceLabel,
+  usd,
 } from "@/lib/format";
 import type { ResultRow, ResultsResponse, RunStatus } from "@/lib/types";
 
@@ -54,6 +56,12 @@ export default function RunPage() {
   }, [refresh]);
 
   const funnel = run?.funnel;
+  const batchPending = Object.values(funnel?.batch ?? {}).reduce(
+    (sum, entry) => sum + (entry?.submitted ?? 0),
+    0,
+  );
+  const totalUsd = Object.values(run?.cost ?? {}).reduce((sum, c) => sum + (c.usd ?? 0), 0);
+  const savedUsd = Object.values(run?.cost ?? {}).reduce((sum, c) => sum + (c.usd_saved ?? 0), 0);
   const total = funnel?.total ?? 0;
   const evaluated = funnel?.evaluated_so_far ?? 0;
   const deepCount =
@@ -108,15 +116,31 @@ export default function RunPage() {
               {funnel!.memoized} aday önceki taramadan hazır geldi — yeniden işlenmedi.
             </div>
           )}
+          {run.mode === "batch" && active && (
+            <div className="notice accent" style={{ marginTop: 12 }}>
+              <strong>Ekonomik mod</strong> — {batchPending} aday toplu işlemde. Yapay zekâ
+              maliyeti yarı yarıya düşer; sonuçlar genellikle bir saat içinde hazır olur (en geç
+              24 saat). Bu sayfayı kapatabilirsiniz, tarama arka planda sürer.
+            </div>
+          )}
+          {funnel?.error && (
+            <div className="notice bad" style={{ marginTop: 12 }}>
+              {funnel.error}
+            </div>
+          )}
           {run.status === "complete" && Object.keys(run.cost).length > 0 && (
             <div className="tiny" style={{ marginTop: 8 }}>
               Model kullanımı:{" "}
               {Object.entries(run.cost)
                 .map(
                   ([stage, c]) =>
-                    `${stage === "light" ? "ön değerlendirme" : stage === "deep" ? "derin analiz" : stage} ${c.calls} çağrı`,
+                    `${STAGE_LABEL[stage] ?? stage} ${c.calls} çağrı`,
                 )
                 .join(" · ")}
+              {totalUsd > 0 && ` · yaklaşık ${usd(totalUsd)}`}
+              {savedUsd > 0 && (
+                <span className="saved"> · ekonomik mod {usd(savedUsd)} tasarruf</span>
+              )}
             </div>
           )}
         </div>

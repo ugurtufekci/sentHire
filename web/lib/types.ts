@@ -205,10 +205,22 @@ export interface RunStatus {
     hard_failed?: number;
     deep_analyzed?: number;
     ranked?: number;
+    error?: string;
+    batch?: Record<
+      "light" | "deep",
+      { id: string; submitted: number; polls?: number; status?: string } | undefined
+    >;
   };
   cost: Record<
     string,
-    { calls: number; input_tokens: number; output_tokens: number; cache_read_tokens: number }
+    {
+      calls: number;
+      input_tokens: number;
+      output_tokens: number;
+      cache_read_tokens: number;
+      usd?: number;
+      usd_saved?: number;
+    }
   >;
   started_at: string | null;
   finished_at: string | null;

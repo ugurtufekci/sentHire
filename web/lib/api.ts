@@ -186,10 +186,10 @@ export const api = {
         funnel: { ranked?: number; total?: number };
       }[]
     >(`/jobs/${jobId}/runs`),
-  startRun: (jobId: string) =>
+  startRun: (jobId: string, mode: "interactive" | "batch" = "interactive") =>
     request<{ run_id: string; status: string; spec_version: number }>(`/jobs/${jobId}/runs`, {
       method: "POST",
-      body: JSON.stringify({ mode: "interactive" }),
+      body: JSON.stringify({ mode }),
     }),
   runStatus: (runId: string) => request<RunStatus>(`/runs/${runId}`),
   runResults: (runId: string) => request<ResultsResponse>(`/runs/${runId}/results`),

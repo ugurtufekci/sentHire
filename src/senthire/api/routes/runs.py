@@ -1,6 +1,7 @@
 """Screening runs: start, watch the funnel, read ranked results (docs/01 §3–4)."""
 
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -22,7 +23,9 @@ router = APIRouter(tags=["runs"])
 
 
 class RunCreate(BaseModel):
-    mode: str = "interactive"  # batch transport lands in a later milestone
+    # interactive = results in minutes at list price;
+    # batch = Message Batches transport, LLM tokens at 50% (docs/07 §5)
+    mode: Literal["interactive", "batch"] = "interactive"
 
 
 @router.post("/jobs/{job_id}/runs", status_code=202)
@@ -51,9 +54,6 @@ def start_run(
     )
     if not profiled:
         raise HTTPException(status_code=409, detail="no parsed candidates to screen")
-
-    if payload.mode != "interactive":
-        raise HTTPException(status_code=422, detail="only interactive mode is available yet")
 
     run = ScreeningRun(org_id=org.id, job_id=job.id, spec_id=spec_row.id, mode=payload.mode)
     session.add(run)

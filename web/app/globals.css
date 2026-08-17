@@ -280,6 +280,20 @@ button { font: inherit; }
 }
 .auth-links a { color: var(--accent); }
 
+/* ---------- run mode choice ---------- */
+.mode-choice { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.mode-option {
+  display: flex; gap: 10px; align-items: flex-start; cursor: pointer;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface); transition: border-color 160ms ease, background 160ms ease;
+}
+.mode-option:hover { border-color: var(--accent); }
+.mode-option.selected { border-color: var(--accent); background: var(--accent-tint); }
+.mode-option input { margin-top: 3px; accent-color: var(--accent); }
+.mode-option > span { display: flex; flex-direction: column; gap: 3px; }
+.mode-option strong { font-size: 14px; font-weight: 600; }
+.saved { color: var(--good); }
+
 /* ---------- billing ---------- */
 .meter {
   height: 8px; margin-top: 8px; border-radius: 999px;

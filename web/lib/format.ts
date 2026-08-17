@@ -155,3 +155,15 @@ export function bandClass(band: string | null | undefined): string {
       return "band band-weak";
   }
 }
+
+export const STAGE_LABEL: Record<string, string> = {
+  light: "ön değerlendirme",
+  deep: "derin analiz",
+  compile: "kriter derleme",
+  extract: "CV okuma",
+};
+
+/** Estimated spend, in the currency the model provider bills in. */
+export function usd(amount: number): string {
+  return `$${amount < 0.01 ? amount.toFixed(4) : amount.toFixed(2)}`;
+}

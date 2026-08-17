@@ -28,6 +28,7 @@ export default function JobPage() {
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"interactive" | "batch">("interactive");
 
   useEffect(() => {
     api.getJob(jobId).then(setJob).catch((e) => setError((e as Error).message));
@@ -38,7 +39,7 @@ export default function JobPage() {
     setStarting(true);
     setError(null);
     try {
-      const { run_id } = await api.startRun(jobId);
+      const { run_id } = await api.startRun(jobId, mode);
       router.push(`/runs/${run_id}`);
     } catch (e) {
       setError((e as Error).message);
@@ -101,6 +102,40 @@ export default function JobPage() {
               satırı kanıtıyla birlikte gelir.
             </p>
             <div className="stack">
+              <div className="mode-choice">
+                {(
+                  [
+                    {
+                      id: "interactive" as const,
+                      title: "Hemen sonuç",
+                      hint: "Sonuçlar dakikalar içinde gelir. Az sayıda CV ve acil ilanlar için.",
+                    },
+                    {
+                      id: "batch" as const,
+                      title: "Ekonomik mod",
+                      hint: "Yapay zekâ maliyeti yarı yarıya düşer; sonuçlar genellikle bir saat içinde (en geç 24 saatte) hazır olur. Büyük havuzlar için.",
+                    },
+                  ] as const
+                ).map((option) => (
+                  <label
+                    key={option.id}
+                    className={`mode-option${mode === option.id ? " selected" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="run-mode"
+                      value={option.id}
+                      checked={mode === option.id}
+                      onChange={() => setMode(option.id)}
+                    />
+                    <span>
+                      <strong>{option.title}</strong>
+                      <span className="tiny">{option.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+
               <div className="hstack">
                 <button
                   className="btn btn-primary"

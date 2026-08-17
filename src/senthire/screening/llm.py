@@ -66,9 +66,10 @@ def _call(model: str, system: str, content: list[dict], output_format, max_token
     return parsed, usage
 
 
-def light_screen(spec: EvaluationSpec, profile: dict) -> tuple[LightScreenOutput, LlmUsage]:
-    settings = get_settings()
-    content = [
+def light_content(spec: EvaluationSpec, profile: dict) -> list[dict]:
+    """Stage 4 user content. Shared by the interactive and batch transports so both
+    send byte-identical spec blocks and hit the same prompt cache."""
+    return [
         {
             "type": "text",
             "text": prompts.LIGHT_USER_SPEC.format(spec_json=_spec_block(spec)),
@@ -77,19 +78,13 @@ def light_screen(spec: EvaluationSpec, profile: dict) -> tuple[LightScreenOutput
         },
         {"type": "text", "text": prompts.LIGHT_USER_PROFILE.format(profile_json=_profile_block(profile))},
     ]
-    return _call(
-        settings.light_screen_model, prompts.LIGHT_SYSTEM, content, LightScreenOutput, LIGHT_MAX_TOKENS
-    )
 
 
-def deep_analyze(
-    spec: EvaluationSpec,
-    profile: dict,
-    raw_text: str,
-    light_judgments: list[dict],
-) -> tuple[DeepAnalysisOutput, LlmUsage]:
-    settings = get_settings()
-    content = [
+def deep_content(
+    spec: EvaluationSpec, profile: dict, raw_text: str, light_judgments: list[dict]
+) -> list[dict]:
+    """Stage 5 user content (see light_content for why this is shared)."""
+    return [
         {
             "type": "text",
             "text": prompts.DEEP_USER_CONTEXT.format(spec_json=_spec_block(spec)),
@@ -104,6 +99,30 @@ def deep_analyze(
             ),
         },
     ]
+
+
+def light_screen(spec: EvaluationSpec, profile: dict) -> tuple[LightScreenOutput, LlmUsage]:
+    settings = get_settings()
     return _call(
-        settings.deep_analysis_model, prompts.DEEP_SYSTEM, content, DeepAnalysisOutput, DEEP_MAX_TOKENS
+        settings.light_screen_model,
+        prompts.LIGHT_SYSTEM,
+        light_content(spec, profile),
+        LightScreenOutput,
+        LIGHT_MAX_TOKENS,
+    )
+
+
+def deep_analyze(
+    spec: EvaluationSpec,
+    profile: dict,
+    raw_text: str,
+    light_judgments: list[dict],
+) -> tuple[DeepAnalysisOutput, LlmUsage]:
+    settings = get_settings()
+    return _call(
+        settings.deep_analysis_model,
+        prompts.DEEP_SYSTEM,
+        deep_content(spec, profile, raw_text, light_judgments),
+        DeepAnalysisOutput,
+        DEEP_MAX_TOKENS,
     )
