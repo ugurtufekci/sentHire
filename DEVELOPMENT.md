@@ -31,7 +31,31 @@ curl -s -X POST localhost:8000/api/v1/jobs/<JOB_ID>/uploads/complete -H "X-API-K
 
 # 4. Watch intake/extraction progress
 curl -s localhost:8000/api/v1/jobs/<JOB_ID>/candidates -H "X-API-Key: dev-local-key"
+
+# 5. Compile requirements from natural language (Stage 2 — async; poll until "draft")
+curl -s -X POST localhost:8000/api/v1/jobs/<JOB_ID>/requirements/compile \
+  -H "X-API-Key: dev-local-key" -H "Content-Type: application/json" \
+  -d '{"natural_language_text": "Ankara'"'"'da ikamet etmesi önemli. Çok sık iş değiştirmiş olmasın. En az 3 yıl B2B satış deneyimi olsun. SaaS deneyimi varsa avantaj."}'
+curl -s localhost:8000/api/v1/requirements/<SPEC_ID> -H "X-API-Key: dev-local-key"
+# review spec.compiler.back_translation + clarifications, then:
+
+# 6. Confirm the spec (optionally send the HR-edited spec JSON in the body)
+curl -s -X POST localhost:8000/api/v1/requirements/<SPEC_ID>/confirm \
+  -H "X-API-Key: dev-local-key" -H "Content-Type: application/json" -d '{}'
+
+# 7. Start a screening run (Stages 3–6) and watch the funnel
+curl -s -X POST localhost:8000/api/v1/jobs/<JOB_ID>/runs \
+  -H "X-API-Key: dev-local-key" -H "Content-Type: application/json" -d '{}'
+curl -s localhost:8000/api/v1/runs/<RUN_ID> -H "X-API-Key: dev-local-key"
+
+# 8. Ranked results + full per-candidate explanation
+curl -s "localhost:8000/api/v1/runs/<RUN_ID>/results" -H "X-API-Key: dev-local-key"
+curl -s localhost:8000/api/v1/runs/<RUN_ID>/results/<APPLICATION_ID> -H "X-API-Key: dev-local-key"
 ```
+
+Run lifecycle: `queued → screening (Stages 3+4 per candidate) → selecting (Stage 5
+policy) → deep_analysis (selected subset) → scoring (Stage 6) → complete`. Phase
+transitions are guarded DB updates, so any number of workers can race safely.
 
 API docs: http://localhost:8000/api/docs · MinIO console: http://localhost:9001
 

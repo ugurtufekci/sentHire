@@ -1,1 +1,1 @@
-from senthire.workers.tasks import parse  # noqa: F401  (task registration)
+from senthire.workers.tasks import parse, screen  # noqa: F401  (task registration)

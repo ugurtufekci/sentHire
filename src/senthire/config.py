@@ -32,11 +32,22 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 20 * 1024 * 1024
     max_pdf_pages: int = 25
 
+    # --- screening funnel knobs (docs/02 Stage 5 selection policy) ---
+    shortlist_top_k: int = 10
+    deep_band_extra: int = 10  # decision band = ranks 1..(top_k + extra)
+    deep_confidence_threshold: float = 0.7
+    deep_weight_threshold: float = 0.10  # req weight share that makes low confidence matter
+
     # DEV ONLY placeholder auth: requests with this key act as the auto-created dev
     # org. Replaced by real signup/session auth in the auth milestone.
     dev_api_key: str = "dev-local-key"
 
-    prompt_versions: dict[str, str] = {"extract": "extract_v1"}
+    prompt_versions: dict[str, str] = {
+        "extract": "extract_v1",
+        "compile": "compile_v1",
+        "light": "screen_v1",
+        "deep": "verify_v1",
+    }
 
 
 @lru_cache

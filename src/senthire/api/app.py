@@ -1,7 +1,15 @@
 from fastapi import FastAPI
 
 from senthire import __version__
-from senthire.api.routes import candidates, health, jobs, templates, uploads
+from senthire.api.routes import (
+    candidates,
+    health,
+    jobs,
+    requirements,
+    runs,
+    templates,
+    uploads,
+)
 
 
 def create_app() -> FastAPI:
@@ -12,6 +20,8 @@ def create_app() -> FastAPI:
     app.include_router(jobs.router, prefix=prefix)
     app.include_router(uploads.router, prefix=prefix)
     app.include_router(candidates.router, prefix=prefix)
+    app.include_router(requirements.router, prefix=prefix)
+    app.include_router(runs.router, prefix=prefix)
     return app
 
 
