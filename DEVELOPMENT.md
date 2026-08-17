@@ -7,9 +7,11 @@ export ANTHROPIC_API_KEY=sk-ant-...
 docker compose up --build
 ```
 
-This starts Postgres (pgvector), Redis, MinIO, the API (with migrations + seed run
-automatically), a Celery worker and the web app at http://localhost:3000 — the
-whole flow (job → criteria → CVs → run → explained ranking) works from the browser.
+This starts Postgres (pgvector), Redis, MinIO, Mailpit, the API (with migrations +
+seed run automatically), a Celery worker and the web app at http://localhost:3000 —
+the whole flow (signup → invite team → job → criteria → CVs → run → explained
+ranking) works from the browser. Outbound email (invitations, password resets)
+lands in the Mailpit inbox at http://localhost:8025.
 
 The same flow over raw HTTP, if you prefer curl:
 
@@ -116,8 +118,16 @@ Mechanics:
 - Browser auth is a server-side session: HttpOnly `senthire_session` cookie holding
   an opaque token; the DB stores only its sha256 (`auth_sessions`). Passwords are
   argon2 hashes. Set `SENTHIRE_SECURE_COOKIES=true` behind HTTPS.
-- Invitations (`invitations`) expire after 7 days; the raw link is shown once to
-  the admin (only the token hash is stored). Email delivery is a later milestone.
+- Invitations (`invitations`) expire after 7 days. Creating one emails the invitee
+  (via the `mail` Celery queue, so SMTP never blocks the request) and returns the
+  link to the admin as a fallback; only the token hash is stored, so "resend"
+  rotates the token and kills the old link.
+- Password reset: `POST /auth/forgot-password` always answers 200 (no account
+  enumeration), emails a 60-minute single-use link, and caps outstanding links
+  per account. Completing a reset revokes all other reset links and sessions.
+- Email backends (`SENTHIRE_EMAIL_BACKEND`): `console` (default — emails are
+  printed to the API/worker logs, links clickable from the terminal) or `smtp`
+  (docker-compose points it at Mailpit; production points it at any provider).
 - Roles: `admin` (invite/manage members) and `member`. The API refuses to demote
   or deactivate the last active admin. Deactivating a member revokes their sessions.
 - Optional `organizations.seat_limit` caps active members + pending invitations.

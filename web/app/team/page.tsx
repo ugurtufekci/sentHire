@@ -13,7 +13,11 @@ export default function TeamPage() {
   const [invitations, setInvitations] = useState<PendingInvitation[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Role>("member");
-  const [createdLink, setCreatedLink] = useState<{ email: string; url: string } | null>(null);
+  const [createdLink, setCreatedLink] = useState<{
+    email: string;
+    url: string;
+    emailQueued: boolean;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +46,11 @@ export default function TeamPage() {
     setCreatedLink(null);
     try {
       const created = await api.createInvitation(inviteEmail.trim(), inviteRole);
-      setCreatedLink({ email: created.email, url: created.invite_url });
+      setCreatedLink({
+        email: created.email,
+        url: created.invite_url,
+        emailQueued: created.email_queued,
+      });
       setCopied(false);
       setInviteEmail("");
       await refresh(true);
@@ -71,6 +79,22 @@ export default function TeamPage() {
   async function revoke(id: string) {
     await api.revokeInvitation(id);
     await refresh(true);
+  }
+
+  async function resend(id: string) {
+    setError(null);
+    try {
+      const updated = await api.resendInvitation(id);
+      setCreatedLink({
+        email: updated.email,
+        url: updated.invite_url,
+        emailQueued: updated.email_queued,
+      });
+      setCopied(false);
+      await refresh(true);
+    } catch (err) {
+      setError((err as Error).message);
+    }
   }
 
   async function patchMember(id: string, patch: { role?: Role; is_active?: boolean }) {
@@ -126,8 +150,18 @@ export default function TeamPage() {
             <div className="notice accent" style={{ marginTop: 12 }}>
               <div className="hstack" style={{ justifyContent: "space-between" }}>
                 <span>
-                  <strong>{createdLink.email}</strong> için davet hazır — bağlantıyı kendisine
-                  iletin. Güvenlik için bağlantı yalnızca şimdi görünür.
+                  {createdLink.emailQueued ? (
+                    <>
+                      <strong>{createdLink.email}</strong> adresine davet e-postası gönderildi.
+                      Dilerseniz bağlantıyı kopyalayıp kendiniz de iletebilirsiniz.
+                    </>
+                  ) : (
+                    <>
+                      Davet hazır ancak e-posta gönderilemedi — bağlantıyı kopyalayıp{" "}
+                      <strong>{createdLink.email}</strong> adresine kendiniz iletin.
+                    </>
+                  )}{" "}
+                  Güvenlik için bağlantı yalnızca şimdi görünür.
                 </span>
                 <button className="btn" type="button" onClick={copyLink}>
                   {copied ? "Kopyalandı ✓" : "Bağlantıyı kopyala"}
@@ -147,6 +181,9 @@ export default function TeamPage() {
                   <span className="file-name">{inv.email}</span>
                   <span className="chip">{ROLE_LABEL[inv.role]}</span>
                   <span className="tiny">son geçerlilik {formatDate(inv.expires_at)}</span>
+                  <button className="btn btn-ghost" onClick={() => resend(inv.id)} type="button">
+                    Yeniden gönder
+                  </button>
                   <button className="btn btn-ghost" onClick={() => revoke(inv.id)} type="button">
                     İptal et
                   </button>

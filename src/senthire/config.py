@@ -49,10 +49,26 @@ class Settings(BaseSettings):
     session_cookie_name: str = "senthire_session"
     session_ttl_days: int = 30
     invitation_ttl_days: int = 7
+    password_reset_ttl_minutes: int = 60
+    # Cap on outstanding (unused, unexpired) reset tokens per account, so the
+    # forgot-password form cannot be used to bomb an inbox.
+    password_reset_max_active: int = 3
     # Set true behind HTTPS so the session cookie is marked Secure.
     secure_cookies: bool = False
     # Used to build invitation links shown to admins.
     app_base_url: str = "http://localhost:3000"
+
+    # --- outbound email (invitations, password resets) ---
+    # "console" logs emails to stdout (default, zero-config dev);
+    # "smtp" delivers via the SMTP settings below (Mailpit in docker-compose,
+    # any transactional provider in production).
+    email_backend: str = "console"
+    email_from: str = "sentHire <no-reply@senthire.app>"
+    smtp_host: str = "localhost"
+    smtp_port: int = 1025
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_starttls: bool = False
 
     # OPT-IN dev backdoor for curl/scripts: requests with this key act as an
     # auto-provisioned "Dev Org" admin. Unset (None) by default so production

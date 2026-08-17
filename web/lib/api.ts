@@ -85,14 +85,36 @@ export const api = {
       { redirectOn401: false },
     ),
 
+  forgotPassword: (email: string) =>
+    request<{ ok: boolean }>(
+      "/auth/forgot-password",
+      { method: "POST", body: JSON.stringify({ email }) },
+      { redirectOn401: false },
+    ),
+  passwordResetLookup: (token: string) =>
+    request<{ email_masked: string }>(`/auth/password-resets/${token}`, undefined, {
+      redirectOn401: false,
+    }),
+  resetPassword: (token: string, password: string) =>
+    request<Me>(
+      `/auth/password-resets/${token}`,
+      { method: "POST", body: JSON.stringify({ password }) },
+      { redirectOn401: false },
+    ),
+
   orgInfo: () => request<OrgInfo>("/org"),
   listMembers: () => request<Member[]>("/org/members"),
   listInvitations: () => request<PendingInvitation[]>("/org/invitations"),
   createInvitation: (email: string, role: "admin" | "member") =>
-    request<PendingInvitation & { invite_url: string }>("/org/invitations", {
-      method: "POST",
-      body: JSON.stringify({ email, role }),
-    }),
+    request<PendingInvitation & { invite_url: string; email_queued: boolean }>(
+      "/org/invitations",
+      { method: "POST", body: JSON.stringify({ email, role }) },
+    ),
+  resendInvitation: (invitationId: string) =>
+    request<PendingInvitation & { invite_url: string; email_queued: boolean }>(
+      `/org/invitations/${invitationId}/resend`,
+      { method: "POST" },
+    ),
   revokeInvitation: (invitationId: string) =>
     request<void>(`/org/invitations/${invitationId}`, { method: "DELETE" }),
   updateMember: (userId: string, patch: { role?: "admin" | "member"; is_active?: boolean }) =>

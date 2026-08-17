@@ -1,9 +1,9 @@
 """Workspace administration: members and invitations.
 
 Any member can see who is in the workspace; only admins can invite, revoke
-invitations, change roles, or deactivate accounts. Invitation links are shown
-once to the admin (only the token hash is stored) — email delivery is a later
-milestone.
+invitations, change roles, or deactivate accounts. Creating an invitation
+emails the invitee and returns the link to the admin as a fallback; only the
+token hash is stored, so "resend" rotates the token (old link dies).
 """
 
 from datetime import UTC, datetime, timedelta
@@ -17,6 +17,8 @@ from senthire.api.deps import get_current_user, get_db, parse_uuid, require_admi
 from senthire.config import get_settings
 from senthire.db.models import AuditLog, Invitation, Organization, User
 from senthire.services import auth as auth_service
+from senthire.services.email import invitation_email
+from senthire.workers.tasks.mail import enqueue_mail
 
 router = APIRouter(tags=["team"])
 
@@ -152,10 +154,59 @@ def create_invitation(
         )
     )
     session.commit()
-    # The raw token exists only in this response; the admin shares the link.
+    invite_url = f"{settings.app_base_url}/join/{token}"
+    email_queued = _send_invitation(org, admin, invitation.email, invite_url, settings)
+    # The raw link also comes back to the admin as a fallback (spam folders happen).
     return {
         **_invitation_out(invitation),
-        "invite_url": f"{settings.app_base_url}/join/{token}",
+        "invite_url": invite_url,
+        "email_queued": email_queued,
+    }
+
+
+def _send_invitation(org, admin: User, email: str, invite_url: str, settings) -> bool:
+    subject, html, text = invitation_email(
+        org_name=org.name,
+        inviter_name=admin.name or admin.email,
+        invite_url=invite_url,
+        expires_days=settings.invitation_ttl_days,
+    )
+    return enqueue_mail(email, subject, html, text)
+
+
+@router.post("/org/invitations/{invitation_id}/resend")
+def resend_invitation(
+    invitation_id: str,
+    admin: User = Depends(require_admin),
+    session: Session = Depends(get_db),
+) -> dict:
+    """Rotate the token (invalidating the old link) and email a fresh one."""
+    invitation = session.get(Invitation, parse_uuid(invitation_id, "invitation_id"))
+    if invitation is None or invitation.org_id != admin.org_id:
+        raise HTTPException(status_code=404, detail="invitation not found")
+    if invitation.accepted_at is not None or invitation.revoked_at is not None:
+        raise HTTPException(status_code=409, detail="invitation is no longer pending")
+
+    settings = get_settings()
+    token = auth_service.new_token()
+    invitation.token_hash = auth_service.hash_token(token)
+    invitation.expires_at = datetime.now(UTC) + timedelta(days=settings.invitation_ttl_days)
+    org = session.get(Organization, admin.org_id)
+    session.add(
+        AuditLog(
+            org_id=admin.org_id,
+            actor=admin.id,
+            event="team.invitation_resent",
+            entity={"invitation_id": str(invitation.id)},
+        )
+    )
+    session.commit()
+    invite_url = f"{settings.app_base_url}/join/{token}"
+    email_queued = _send_invitation(org, admin, invitation.email, invite_url, settings)
+    return {
+        **_invitation_out(invitation),
+        "invite_url": invite_url,
+        "email_queued": email_queued,
     }
 
 

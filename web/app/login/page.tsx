@@ -50,9 +50,14 @@ export default function LoginPage() {
           />
         </div>
         <div className="auth-field">
-          <label className="field-label" htmlFor="password">
-            Şifre
-          </label>
+          <div className="hstack" style={{ justifyContent: "space-between" }}>
+            <label className="field-label" htmlFor="password">
+              Şifre
+            </label>
+            <Link href="/forgot-password" className="tiny" style={{ color: "var(--accent)" }}>
+              Şifrenizi mi unuttunuz?
+            </Link>
+          </div>
           <input
             id="password"
             className="input"

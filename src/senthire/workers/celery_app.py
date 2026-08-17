@@ -14,6 +14,7 @@ celery_app.conf.update(
         "senthire.intake.*": {"queue": "parse"},
         "senthire.screen.*": {"queue": "screen"},
         "senthire.poll.*": {"queue": "poll"},
+        "senthire.mail.*": {"queue": "mail"},
     },
     broker_connection_retry_on_startup=True,
 )

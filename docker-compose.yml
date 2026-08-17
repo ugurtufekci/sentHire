@@ -25,6 +25,11 @@ services:
     ports: ["9000:9000", "9001:9001"]
     volumes: [minio:/data]
 
+  mailpit:
+    # local email catcher: invitations & password resets land in its inbox UI
+    image: axllent/mailpit:latest
+    ports: ["8025:8025", "1025:1025"]
+
   api:
     build: .
     command: >
@@ -40,6 +45,10 @@ services:
       SENTHIRE_S3_PUBLIC_ENDPOINT_URL: http://localhost:9000
       # opt-in curl/scripting backdoor for local dev; leave unset in production
       SENTHIRE_DEV_API_KEY: dev-local-key
+      # invitations/password resets go to Mailpit (UI: http://localhost:8025)
+      SENTHIRE_EMAIL_BACKEND: smtp
+      SENTHIRE_SMTP_HOST: mailpit
+      SENTHIRE_SMTP_PORT: 1025
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY in your shell or .env}
     ports: ["8000:8000"]
     depends_on:
@@ -49,7 +58,7 @@ services:
 
   worker:
     build: .
-    command: celery -A senthire.workers.celery_app worker -Q parse,screen,poll -c 8 --loglevel=info
+    command: celery -A senthire.workers.celery_app worker -Q parse,screen,poll,mail -c 8 --loglevel=info
     environment: *app_env
     depends_on:
       db: {condition: service_healthy}

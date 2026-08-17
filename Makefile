@@ -19,7 +19,7 @@ api:
 	uvicorn senthire.api.app:app --reload --port 8000
 
 worker:
-	celery -A senthire.workers.celery_app worker -Q parse,screen,poll -c 8 --loglevel=info
+	celery -A senthire.workers.celery_app worker -Q parse,screen,poll,mail -c 8 --loglevel=info
 
 up:
 	docker compose up --build
