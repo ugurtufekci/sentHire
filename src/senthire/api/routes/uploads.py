@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from senthire.api.deps import get_db, get_org, parse_uuid
+from senthire.billing import service as billing
 from senthire.config import get_settings
 from senthire.db.models import Job, Organization
 from senthire.services import storage
@@ -48,6 +49,10 @@ def request_upload_urls(
     session: Session = Depends(get_db),
 ) -> dict:
     job = _get_job(job_id, org, session)
+    # Quota gate for CV-volume pricing. Metering itself happens at intake (new,
+    # valid documents only — duplicates and rejected files are free), so this
+    # check is intentionally the strict end of the pair.
+    billing.check_cv_quota(session, org.id, len(payload.files))
     out = []
     for f in payload.files:
         key = storage.upload_key(org.id, job.id, f.filename)

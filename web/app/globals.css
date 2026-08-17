@@ -280,6 +280,23 @@ button { font: inherit; }
 }
 .auth-links a { color: var(--accent); }
 
+/* ---------- billing ---------- */
+.meter {
+  height: 8px; margin-top: 8px; border-radius: 999px;
+  background: var(--surface-2); overflow: hidden;
+}
+.meter-fill {
+  height: 100%; border-radius: 999px; background: var(--accent);
+  transition: width 400ms ease;
+}
+.meter-fill.hot { background: var(--warn); }
+.plan-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+.plan-card.current { border-color: var(--accent); }
+.plan-price { font-size: 20px; font-weight: 650; margin: 10px 0 2px; letter-spacing: -0.01em; }
+
 /* ---------- user menu (topbar) ---------- */
 .user-menu { position: relative; }
 .user-menu summary {

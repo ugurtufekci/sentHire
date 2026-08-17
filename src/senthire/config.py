@@ -70,6 +70,21 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_starttls: bool = False
 
+    # --- billing (CV-volume pricing, iyzico for the Turkish market) ---
+    # "mock" activates plans instantly without payment (local dev / demos);
+    # "iyzico" runs the real checkout — requires the iyzico_* settings below.
+    billing_provider: str = "mock"
+    iyzico_api_key: str | None = None
+    iyzico_secret_key: str | None = None
+    # Sandbox by default; switch to https://api.iyzipay.com for production.
+    iyzico_base_url: str = "https://sandbox-api.iyzipay.com"
+    # Map of our plan ids -> iyzico pricing-plan reference codes. Plans are
+    # created once in the iyzico dashboard (or via their API) and referenced
+    # here, e.g. {"baslangic": "abc-123", "profesyonel": "def-456"}.
+    iyzico_plan_refs: dict[str, str] = {}
+    # Shared-secret path segment for the payment webhook; unset disables it.
+    billing_webhook_token: str | None = None
+
     # OPT-IN dev backdoor for curl/scripts: requests with this key act as an
     # auto-provisioned "Dev Org" admin. Unset (None) by default so production
     # deployments are cookie-session only; docker-compose sets it for local dev.

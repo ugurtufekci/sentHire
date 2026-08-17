@@ -40,6 +40,35 @@ export interface InvitationLookup {
   expires_at: string;
 }
 
+export interface BillingPlan {
+  id: string;
+  name: string;
+  monthly_price_try: number;
+  cv_quota_per_month: number;
+}
+
+export interface BillingDetails {
+  company_title: string;
+  tax_number: string;
+  tax_office: string;
+  address: string;
+  city: string;
+}
+
+export interface BillingInfo {
+  plan: BillingPlan;
+  status: "trial" | "pending_checkout" | "active" | "past_due" | "canceled";
+  provider: string | null;
+  usage: { period: string; used: number; quota: number; remaining: number };
+  catalog: BillingPlan[];
+  billing_details: BillingDetails | null;
+  provider_mode: "mock" | "iyzico";
+}
+
+export type CheckoutResponse =
+  | { mode: "mock"; status: "active"; plan: BillingPlan }
+  | { mode: "iyzico"; token: string; checkout_html: string };
+
 export interface Job {
   id: string;
   title: string;

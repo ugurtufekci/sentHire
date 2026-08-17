@@ -69,6 +69,48 @@ class AuthSession(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class Subscription(Base):
+    """One row per organization: its paid plan and provider state.
+
+    No row (or a non-active status) means the organization is on the free
+    trial plan. Plan definitions live in code (billing/plans.py); this row
+    stores which one is active and how it is paid.
+    """
+
+    __tablename__ = "subscriptions"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id"), unique=True, index=True
+    )
+    plan_id: Mapped[str] = mapped_column(Text)
+    # pending_checkout | active | past_due | canceled
+    status: Mapped[str] = mapped_column(Text, server_default=text("'pending_checkout'"))
+    provider: Mapped[str] = mapped_column(Text)  # mock | iyzico
+    # checkout token while pending, subscription reference once active
+    provider_ref: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = created_at_col()
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    canceled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class UsageCounter(Base):
+    """Monthly CV-processing counter per organization (pricing is CV-volume based).
+
+    Keyed by calendar month ("2026-08"), so usage resets naturally at month
+    boundaries without a scheduled job. Incremented when intake accepts a new
+    (non-duplicate, valid) CV — the point where model cost starts.
+    """
+
+    __tablename__ = "usage_counters"
+    __table_args__ = (UniqueConstraint("org_id", "period"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), index=True)
+    period: Mapped[str] = mapped_column(Text)  # "YYYY-MM"
+    cvs_processed: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+
+
 class PasswordReset(Base):
     """One-time password-reset token (sha256 stored, raw token only in the email)."""
 

@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from senthire import PIPELINE_VERSION
+from senthire.billing import service as billing
 from senthire.config import get_settings
 from senthire.db.models import Application, AuditLog, Candidate, CandidateProfileRow, Document
 from senthire.db.session import get_sessionmaker
@@ -69,6 +70,10 @@ def intake_document(org_id: str, job_id: str, s3_key: str, filename: str) -> dic
             size_bytes=size,
         )
         session.add(doc)
+        # Billing meter: a new, valid, non-duplicate CV — the point where model
+        # cost starts. Same transaction as the document insert, so a lost race
+        # (IntegrityError below) also rolls the counter back.
+        billing.record_cvs_processed(session, doc.org_id)
         try:
             session.commit()
         except IntegrityError:  # concurrent upload of the same bytes won the race

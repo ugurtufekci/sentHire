@@ -97,6 +97,32 @@ Two things matter for uploads to work from a browser:
   `API_PROXY_TARGET`. The image runs `next start` (not the standalone server)
   precisely so that rewrite target is read at container start, not baked at build.
 
+## Billing (CV-volume plans, iyzico)
+
+Pricing is by monthly CV volume: the meter counts a CV when intake accepts it
+(valid PDF, not a duplicate) — re-screening already-processed CVs is memoized and
+free. Counters are keyed by calendar month (`usage_counters`), so quotas reset at
+month boundaries without a scheduler. The upload endpoint enforces the active
+plan's quota with HTTP 402; the plan catalog lives in
+`senthire/billing/plans.py` (**placeholder prices — set the real ones before
+launch**).
+
+Providers (`SENTHIRE_BILLING_PROVIDER`):
+
+- `mock` (default): "Bu plana geç" activates instantly with no payment — local
+  dev and demos.
+- `iyzico`: real hosted checkout. Requires `SENTHIRE_IYZICO_API_KEY` /
+  `SENTHIRE_IYZICO_SECRET_KEY` (sandbox keys work against the default
+  `SENTHIRE_IYZICO_BASE_URL`) and `SENTHIRE_IYZICO_PLAN_REFS` — a JSON map from
+  our plan ids to pricing-plan reference codes created in the iyzico dashboard,
+  e.g. `{"baslangic": "ref-1", "profesyonel": "ref-2", "kurumsal": "ref-3"}`.
+  Admins must save billing details (company title, tax number, ...) once; the
+  checkout form renders on /billing, iyzico redirects to
+  `/api/v1/billing/callback`, and activation happens only after a
+  server-to-server retrieve confirms the subscription. Renewal webhooks can be
+  enabled by setting `SENTHIRE_BILLING_WEBHOOK_TOKEN` and pointing iyzico at
+  `/api/v1/billing/webhook/<that token>`.
+
 ## Tests
 
 `make test` runs the pure-logic suites (no network, no DB): derived-field date math,

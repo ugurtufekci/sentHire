@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { PARSE_ERROR_LABEL, PARSE_STATUS_LABEL, SENIORITY_LABEL, months } from "@/lib/format";
 import type { CandidatesResponse } from "@/lib/types";
 
@@ -18,6 +19,7 @@ export default function UploadStep({
   const [locals, setLocals] = useState<LocalUpload[]>([]);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quotaHit, setQuotaHit] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -52,6 +54,7 @@ export default function UploadStep({
     if (!fileList || fileList.length === 0) return;
     const files = Array.from(fileList);
     setError(null);
+    setQuotaHit(false);
     setLocals(files.map((f) => ({ name: f.name, state: "uploading" })));
     try {
       const { uploads } = await api.requestUploads(
@@ -89,7 +92,12 @@ export default function UploadStep({
         await refresh();
       }
     } catch (e) {
-      setError((e as Error).message);
+      if (e instanceof ApiError && e.status === 402) {
+        setQuotaHit(true);
+        setLocals([]);
+      } else {
+        setError((e as Error).message);
+      }
     }
   }
 
@@ -103,6 +111,15 @@ export default function UploadStep({
   return (
     <div className="stack">
       {error && <div className="notice bad">{error}</div>}
+      {quotaHit && (
+        <div className="notice warn">
+          Bu ayki CV işleme kotanız bu yükleme için yetersiz.{" "}
+          <Link href="/billing" style={{ color: "inherit", fontWeight: 600 }}>
+            Plan ve kullanım
+          </Link>{" "}
+          sayfasından kalan hakkınızı görebilir veya planınızı yükseltebilirsiniz.
+        </div>
+      )}
 
       <div
         className={`dropzone${dragging ? " drag" : ""}`}

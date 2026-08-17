@@ -56,6 +56,9 @@ export default function UserMenu() {
         <Link className="menu-item" href="/team">
           Ekip
         </Link>
+        <Link className="menu-item" href="/billing">
+          Plan ve kullanım
+        </Link>
         <button className="menu-item" onClick={logout}>
           Çıkış yap
         </button>

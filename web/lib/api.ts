@@ -1,5 +1,8 @@
 import type {
+  BillingDetails,
+  BillingInfo,
   CandidatesResponse,
+  CheckoutResponse,
   InvitationLookup,
   Job,
   Me,
@@ -122,6 +125,20 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
+
+  billingInfo: () => request<BillingInfo>("/billing"),
+  saveBillingDetails: (details: BillingDetails) =>
+    request<{ billing_details: BillingDetails }>("/billing/details", {
+      method: "PUT",
+      body: JSON.stringify(details),
+    }),
+  checkout: (planId: string) =>
+    request<CheckoutResponse>("/billing/checkout", {
+      method: "POST",
+      body: JSON.stringify({ plan_id: planId }),
+    }),
+  cancelSubscription: () =>
+    request<{ status: string }>("/billing/cancel", { method: "POST" }),
 
   // --- product ---
   listTemplates: () => request<Template[]>("/templates"),
