@@ -1,0 +1,53 @@
+[project]
+name = "senthire"
+version = "0.1.0"
+description = "sentHire — AI-powered CV screening platform (multi-tenant SaaS)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "sqlalchemy>=2.0.30",
+    "psycopg[binary]>=3.2",
+    "alembic>=1.13",
+    "pgvector>=0.3",
+    "celery[redis]>=5.4",
+    "redis>=5.0",
+    "boto3>=1.34",
+    "pymupdf>=1.24",
+    "anthropic>=0.116",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "httpx>=0.27",
+    "ruff>=0.5",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+senthire = ["templates_seed/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "B", "I", "UP", "RUF"]
+ignore = [
+    "B008",  # `Depends(...)` in defaults is the standard FastAPI idiom
+    "RUF001", "RUF002", "RUF003",  # Turkish text (ı, –, ×) is intentional here
+]

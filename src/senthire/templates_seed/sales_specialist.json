@@ -1,0 +1,131 @@
+{
+  "slug": "sales-specialist",
+  "locale": "tr",
+  "title": "Satış Uzmanı (Sales Specialist)",
+  "spec_seed": {
+    "schema_version": "1.0",
+    "locale": "tr",
+    "weights": {
+      "relevant_experience": 0.25,
+      "skills": 0.2,
+      "industry": 0.15,
+      "career_stability": 0.1,
+      "education": 0.1,
+      "language": 0.05,
+      "location": 0.05,
+      "custom": 0.1
+    },
+    "bonus_cap": 10.0,
+    "requirements": [
+      {
+        "req_id": "T1_min_experience",
+        "category": "relevant_experience",
+        "label": {"tr": "En az 2 yıl toplam iş deneyimi", "en": "≥2 years total experience"},
+        "type": "hard",
+        "importance": "critical",
+        "evaluator": "deterministic",
+        "deterministic": {
+          "predicate": {"field": "derived.total_experience_months", "op": ">=", "value": 24},
+          "borderline_tolerance": 0.1
+        },
+        "missing_policy": "unknown",
+        "source": {"kind": "template"}
+      },
+      {
+        "req_id": "T2_sales_experience",
+        "category": "relevant_experience",
+        "label": {"tr": "Satış deneyimi", "en": "Sales experience"},
+        "type": "scored",
+        "importance": "critical",
+        "evaluator": "semantic",
+        "semantic": {
+          "rubric": "Score how substantial the candidate's hands-on sales experience is (direct selling, pipeline ownership, closing). Cite the roles you counted.",
+          "target_field": "experience"
+        },
+        "weight_within_category": 1.0,
+        "source": {"kind": "template"}
+      },
+      {
+        "req_id": "T3_industry_experience",
+        "category": "industry",
+        "label": {"tr": "İlgili sektör deneyimi", "en": "Relevant industry experience"},
+        "type": "scored",
+        "importance": "high",
+        "evaluator": "semantic",
+        "semantic": {
+          "rubric": "Score overlap between the candidate's industries and the job's industry. Name the matching employers.",
+          "target_field": "experience"
+        },
+        "source": {"kind": "template"}
+      },
+      {
+        "req_id": "T4_crm_usage",
+        "category": "skills",
+        "label": {"tr": "CRM kullanımı", "en": "CRM usage"},
+        "type": "scored",
+        "importance": "high",
+        "evaluator": "hybrid",
+        "deterministic": {
+          "predicate": {"field": "tools_technologies", "op": "contains", "value": ["salesforce", "hubspot", "pipedrive", "crm", "ms_dynamics", "zoho"]}
+        },
+        "semantic": {
+          "rubric": "Score depth of CRM usage (daily pipeline management > mere listing). Cite evidence.",
+          "target_field": "skills"
+        },
+        "source": {"kind": "template"}
+      },
+      {
+        "req_id": "T5_quota_experience",
+        "category": "custom",
+        "label": {"tr": "Satış hedefi (kota) deneyimi", "en": "Quota-carrying experience"},
+        "type": "scored",
+        "importance": "high",
+        "evaluator": "semantic",
+        "semantic": {
+          "rubric": "Score evidence of working against sales targets/quotas and attainment. Cite figures if present.",
+          "target_field": "experience"
+        },
+        "source": {"kind": "template"}
+      },
+      {
+        "req_id": "T6_communication",
+        "category": "skills",
+        "label": {"tr": "İletişim ve müzakere becerileri", "en": "Communication & negotiation"},
+        "type": "scored",
+        "importance": "medium",
+        "evaluator": "semantic",
+        "semantic": {
+          "rubric": "Score demonstrated communication/negotiation skill (client-facing roles, presentations, deal negotiation) — demonstrated beats self-declared.",
+          "target_field": "experience"
+        },
+        "source": {"kind": "template"}
+      },
+      {
+        "req_id": "T7_education",
+        "category": "education",
+        "label": {"tr": "Lisans mezunu", "en": "Bachelor's degree"},
+        "type": "hard",
+        "importance": "high",
+        "evaluator": "deterministic",
+        "deterministic": {
+          "predicate": {"field": "education.highest_degree_rank", "op": ">=", "value": 3}
+        },
+        "missing_policy": "unknown",
+        "source": {"kind": "template"}
+      },
+      {
+        "req_id": "T8_english",
+        "category": "language",
+        "label": {"tr": "İngilizce (en az B2)", "en": "English (min B2)"},
+        "type": "scored",
+        "importance": "medium",
+        "evaluator": "deterministic",
+        "deterministic": {
+          "predicate": {"field": "languages['en'].cefr_rank", "op": ">=", "value": 4}
+        },
+        "missing_policy": "unknown",
+        "source": {"kind": "template"}
+      }
+    ]
+  }
+}

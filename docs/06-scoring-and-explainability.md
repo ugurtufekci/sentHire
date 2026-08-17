@@ -71,16 +71,17 @@ Career stability         10%      Custom HR   10%
 GATE: R1 B2B≥3y met (explicit) ✓ · degree ✓ · English B2+ ✓ · sales exp ✓  → PASS
 
 Category subscores (evidence-cited):
-  relevant_experience 0.92  skills 0.82  industry 0.91
+  relevant_experience 0.92  skills 0.68  industry 0.91
   career_stability    0.55  education 1.0  language 1.0 (C1)
   location            0.0  (lives in Istanbul; scored pref, not gate)
   custom              0.85
 
-base  = 100 × (.25×.92 + .20×.82 + .15×.91 + .10×.55 + .10×1.0 + .05×1.0 + .05×0 + .10×.85)
-      = 79.3
+base  = 100 × (.25×.92 + .20×.68 + .15×.91 + .10×.55 + .10×1.0 + .05×1.0 + .05×0 + .10×.85)
+      = 79.25
 penalties: job_changes_last_5y = 3 → below threshold (>3) → −0
 bonuses  : SaaS experience (Acme SaaS, 3y, explicit) → +5
-final    = 84.3 → displayed 84, band "top", confidence 0.88 (high)
+final    = 84.25 → displayed 84, band "top", confidence 0.88 (high)
+(this exact computation is pinned by tests/test_scoring.py::test_worked_example_matches_docs)
 ```
 
 And the rendered explanation (every line traceable to stored data):

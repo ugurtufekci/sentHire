@@ -1,0 +1,238 @@
+"""ORM models mirroring the schema contract in docs/03-data-model.md."""
+
+import uuid
+from datetime import datetime
+
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    Text,
+    UniqueConstraint,
+    text,
+)
+from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from senthire.db.base import Base, created_at_col, uuid_pk
+
+JSONB_EMPTY_OBJ = text("'{}'::jsonb")
+JSONB_EMPTY_ARR = text("'[]'::jsonb")
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    name: Mapped[str] = mapped_column(Text)
+    region: Mapped[str] = mapped_column(Text, server_default=text("'eu'"))
+    settings: Mapped[dict] = mapped_column(JSONB, server_default=JSONB_EMPTY_OBJ)
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"))
+    email: Mapped[str] = mapped_column(CITEXT, unique=True)
+    role: Mapped[str] = mapped_column(Text)  # owner | recruiter | viewer
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class JobTemplate(Base):
+    __tablename__ = "job_templates"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    slug: Mapped[str] = mapped_column(Text, unique=True)
+    locale: Mapped[str] = mapped_column(Text, server_default=text("'tr'"))
+    title: Mapped[str] = mapped_column(Text)
+    spec_seed: Mapped[dict] = mapped_column(JSONB)
+
+
+class Job(Base):
+    __tablename__ = "jobs"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), index=True)
+    title: Mapped[str] = mapped_column(Text)
+    template_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("job_templates.id"))
+    status: Mapped[str] = mapped_column(Text, server_default=text("'draft'"))
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class EvaluationSpecRow(Base):
+    __tablename__ = "evaluation_specs"
+    __table_args__ = (UniqueConstraint("job_id", "version"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    job_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("jobs.id"), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(Text)  # draft | confirmed | superseded
+    spec: Mapped[dict] = mapped_column(JSONB)
+    source_nl_text: Mapped[str | None] = mapped_column(Text)
+    compiler_model: Mapped[str | None] = mapped_column(Text)
+    compiler_prompt_version: Mapped[str | None] = mapped_column(Text)
+    confirmed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class Candidate(Base):
+    __tablename__ = "candidates"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    primary_email: Mapped[str | None] = mapped_column(CITEXT)
+    primary_phone: Mapped[str | None] = mapped_column(Text)
+    display_name: Mapped[str | None] = mapped_column(Text)
+    identity_keys: Mapped[list] = mapped_column(JSONB, server_default=JSONB_EMPTY_ARR)
+    created_at: Mapped[datetime] = created_at_col()
+    erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Document(Base):
+    __tablename__ = "documents"
+    __table_args__ = (UniqueConstraint("org_id", "sha256"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    candidate_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("candidates.id"))
+    # Which job's upload flow brought this file in (intake-status convenience;
+    # the authoritative candidate⇄job link is `applications`).
+    upload_job_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("jobs.id"), index=True)
+    original_filename: Mapped[str | None] = mapped_column(Text)
+    sha256: Mapped[str] = mapped_column(Text)
+    s3_key: Mapped[str] = mapped_column(Text)
+    mime: Mapped[str] = mapped_column(Text)
+    page_count: Mapped[int | None] = mapped_column(Integer)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    document_kind: Mapped[str] = mapped_column(Text, server_default=text("'cv'"))
+    parse_status: Mapped[str] = mapped_column(Text, server_default=text("'pending'"))
+    parse_error: Mapped[dict | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class CandidateProfileRow(Base):
+    __tablename__ = "candidate_profiles"
+    __table_args__ = (UniqueConstraint("document_id", "version"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"), index=True)
+    candidate_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("candidates.id"), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    profile: Mapped[dict] = mapped_column(JSONB)
+    raw_text: Mapped[str] = mapped_column(Text)
+    extraction_confidence: Mapped[float | None] = mapped_column(Float)
+    extractor_model: Mapped[str | None] = mapped_column(Text)
+    extractor_prompt_version: Mapped[str | None] = mapped_column(Text)
+    pipeline_version: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class Application(Base):
+    __tablename__ = "applications"
+    __table_args__ = (UniqueConstraint("job_id", "candidate_id"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    job_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("jobs.id"), index=True)
+    candidate_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("candidates.id"), index=True)
+    document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"))
+    status: Mapped[str] = mapped_column(Text, server_default=text("'received'"))
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class ScreeningRun(Base):
+    __tablename__ = "screening_runs"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    job_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("jobs.id"), index=True)
+    spec_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("evaluation_specs.id"))
+    mode: Mapped[str] = mapped_column(Text)  # interactive | batch
+    status: Mapped[str] = mapped_column(Text, server_default=text("'queued'"))
+    funnel: Mapped[dict] = mapped_column(JSONB, server_default=JSONB_EMPTY_OBJ)
+    cost: Mapped[dict] = mapped_column(JSONB, server_default=JSONB_EMPTY_OBJ)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Evaluation(Base):
+    __tablename__ = "evaluations"
+    __table_args__ = (UniqueConstraint("run_id", "application_id"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("screening_runs.id"), index=True)
+    application_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("applications.id"), index=True)
+    profile_version: Mapped[int] = mapped_column(Integer)
+    spec_version: Mapped[int] = mapped_column(Integer)
+    pipeline_version: Mapped[str] = mapped_column(Text)
+    stage_reached: Mapped[str] = mapped_column(Text)  # hard_filter | light | deep
+    hard_result: Mapped[str] = mapped_column(Text)  # pass | fail | borderline
+    overall_score: Mapped[float | None] = mapped_column(Float)
+    rank: Mapped[int | None] = mapped_column(Integer)
+    band: Mapped[str | None] = mapped_column(Text)
+    confidence: Mapped[float | None] = mapped_column(Float)
+    result: Mapped[dict] = mapped_column(JSONB)
+    models_used: Mapped[dict] = mapped_column(JSONB, server_default=JSONB_EMPTY_OBJ)
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class RequirementResult(Base):
+    __tablename__ = "requirement_results"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    evaluation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("evaluations.id"), index=True)
+    req_id: Mapped[str] = mapped_column(Text)
+    verdict: Mapped[str] = mapped_column(Text)
+    score: Mapped[float | None] = mapped_column(Float)
+    confidence: Mapped[float | None] = mapped_column(Float)
+    info_status: Mapped[str | None] = mapped_column(Text)
+    evidence: Mapped[list | None] = mapped_column(JSONB)
+    source_stage: Mapped[str | None] = mapped_column(Text)
+
+
+class Embedding(Base):
+    __tablename__ = "embeddings"
+    __table_args__ = (UniqueConstraint("scope", "ref_id", "chunk_key", "model"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    scope: Mapped[str] = mapped_column(Text)  # profile | experience | requirement | title
+    ref_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    chunk_key: Mapped[str] = mapped_column(Text)
+    model: Mapped[str] = mapped_column(Text)
+    vector: Mapped[list[float]] = mapped_column(Vector(1024))
+
+
+class Override(Base):
+    __tablename__ = "overrides"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    application_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("applications.id"), index=True)
+    run_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("screening_runs.id"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    action: Mapped[str] = mapped_column(Text)  # promote | reject | restore | note
+    reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    actor: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    event: Mapped[str] = mapped_column(Text)
+    entity: Mapped[dict] = mapped_column(JSONB)
+    detail: Mapped[dict] = mapped_column(JSONB, server_default=JSONB_EMPTY_OBJ)
+    at: Mapped[datetime] = created_at_col()
