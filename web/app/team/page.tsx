@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/format";
-import type { Me, Member, PendingInvitation, Role } from "@/lib/types";
+import { useSession } from "@/lib/session";
+import type { Member, PendingInvitation, Role } from "@/lib/types";
 
 const ROLE_LABEL: Record<string, string> = { admin: "Yönetici", member: "Üye" };
 
 export default function TeamPage() {
-  const [me, setMe] = useState<Me | null>(null);
+  const { session: me } = useSession();
   const [members, setMembers] = useState<Member[]>([]);
   const [invitations, setInvitations] = useState<PendingInvitation[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -22,7 +23,7 @@ export default function TeamPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isAdmin = me?.user.role === "admin";
+  const isAdmin = me ? me.user.role === "admin" : false;
 
   const refresh = useCallback(async (admin: boolean) => {
     setMembers(await api.listMembers());
@@ -30,14 +31,9 @@ export default function TeamPage() {
   }, []);
 
   useEffect(() => {
-    api
-      .me()
-      .then(async (m) => {
-        setMe(m);
-        await refresh(m.user.role === "admin");
-      })
-      .catch((e) => setError((e as Error).message));
-  }, [refresh]);
+    if (!me) return;
+    refresh(me.user.role === "admin").catch((e) => setError((e as Error).message));
+  }, [me, refresh]);
 
   async function invite(e: React.FormEvent) {
     e.preventDefault();
@@ -212,7 +208,7 @@ export default function TeamPage() {
                 <tr key={m.id} style={m.is_active ? undefined : { opacity: 0.55 }}>
                   <td>
                     {m.name || "—"}
-                    {m.id === me?.user.id && <span className="tiny"> (siz)</span>}
+                    {m.id === (me ? me.user.id : null) && <span className="tiny"> (siz)</span>}
                   </td>
                   <td>{m.email}</td>
                   <td>
@@ -224,7 +220,7 @@ export default function TeamPage() {
                   <td>{m.last_login_at ? formatDate(m.last_login_at) : "—"}</td>
                   {isAdmin && (
                     <td>
-                      {m.id !== me?.user.id && (
+                      {m.id !== (me ? me.user.id : null) && (
                         <span className="hstack" style={{ justifyContent: "flex-end" }}>
                           {m.is_active && (
                             <button

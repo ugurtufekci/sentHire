@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from senthire.api.deps import get_db, get_org, parse_uuid
+from senthire.api.enqueue import enqueue_after_commit
 from senthire.billing import service as billing
 from senthire.config import get_settings
 from senthire.db.models import Job, Organization
@@ -86,6 +87,8 @@ def complete_uploads(
     for f in payload.files:
         if not f.s3_key.startswith(prefix):  # tenant isolation on keys (docs/01 §2)
             raise HTTPException(status_code=403, detail=f"key outside org scope: {f.s3_key}")
-        intake_document.delay(str(org.id), str(job.id), f.s3_key, f.filename)
+        enqueue_after_commit(
+            session, intake_document, str(org.id), str(job.id), f.s3_key, f.filename
+        )
         enqueued += 1
     return {"enqueued": enqueued}

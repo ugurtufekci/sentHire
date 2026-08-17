@@ -131,6 +131,20 @@ PDF text-layer detection, schema validation of the seed templates, the auth
 building blocks (argon2 round-trip, token hashing, cookie flags, pre-DB 401 guards),
 and the golden set (below).
 
+`make test-all` additionally runs the suites that need a real Postgres — they
+skip silently without one, so CI can run either shape:
+
+- **Migrations** (`tests/test_migrations.py`): every revision applies to an empty
+  database, the resulting schema matches the ORM exactly, and `downgrade base`
+  leaves nothing behind. This is what catches a migration written against live
+  ORM metadata — the kind that passes on a developer's already-migrated database
+  and only fails on a fresh deploy.
+- **End-to-end journey** (`tests/test_e2e_journey.py`): the product walked as a
+  user walks it — signup, invite a colleague, tenant isolation, compile and
+  confirm criteria, upload CVs, screen, read the ranking, memoized re-runs,
+  billing quota and metering, and batch mode. Model calls and object storage are
+  faked; the API, ORM, orchestration, and scorer are real.
+
 ## Golden-set evaluation
 
 `goldens/` holds hand-labeled reference candidates and specs; the harness runs

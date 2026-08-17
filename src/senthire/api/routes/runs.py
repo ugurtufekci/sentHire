@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from senthire.api.deps import get_db, get_org, parse_uuid
+from senthire.api.enqueue import enqueue_after_commit
 from senthire.db.models import (
     Application,
     Candidate,
@@ -61,7 +62,7 @@ def start_run(
 
     from senthire.workers.tasks.screen import run_start
 
-    run_start.delay(str(run.id))
+    enqueue_after_commit(session, run_start, str(run.id))
     return {"run_id": str(run.id), "status": "queued", "spec_version": spec_row.version}
 
 

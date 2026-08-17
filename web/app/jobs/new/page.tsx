@@ -17,7 +17,8 @@ export default function NewJobPage() {
     api.listTemplates().then(setTemplates).catch(() => setTemplates([]));
   }, []);
 
-  async function create() {
+  async function create(event?: React.FormEvent) {
+    event?.preventDefault();
     if (!title.trim()) return;
     setBusy(true);
     setError(null);
@@ -38,7 +39,8 @@ export default function NewJobPage() {
         istediğiniz kadar ekleyip değiştirebilirsiniz.
       </p>
 
-      <div className="stack" style={{ maxWidth: 560 }}>
+      {/* a real form, so Enter in the title field submits like anywhere else */}
+      <form className="stack" style={{ maxWidth: 560 }} onSubmit={create}>
         <div>
           <label className="field-label" htmlFor="job-title">
             İlan başlığı
@@ -47,6 +49,7 @@ export default function NewJobPage() {
             id="job-title"
             className="input"
             placeholder="ör. Satış Uzmanı — Ankara"
+            required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -82,11 +85,11 @@ export default function NewJobPage() {
         {error && <div className="notice bad">{error}</div>}
 
         <div>
-          <button className="btn btn-primary" onClick={create} disabled={busy || !title.trim()}>
+          <button className="btn btn-primary" type="submit" disabled={busy || !title.trim()}>
             {busy ? "Oluşturuluyor…" : "İlanı oluştur"}
           </button>
         </div>
-      </div>
+      </form>
     </main>
   );
 }

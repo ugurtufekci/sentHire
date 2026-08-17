@@ -11,7 +11,13 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+# An explicitly supplied URL wins (alembic -x url=..., or a caller that sets it
+# programmatically); otherwise fall back to app settings. Without this the tool
+# is welded to one database and cannot be pointed at a scratch one for tests.
+_explicit = context.get_x_argument(as_dictionary=True).get("url") or config.get_main_option(
+    "sqlalchemy.url", None
+)
+config.set_main_option("sqlalchemy.url", _explicit or get_settings().database_url)
 
 target_metadata = Base.metadata
 

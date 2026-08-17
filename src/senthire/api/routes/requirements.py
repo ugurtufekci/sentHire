@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from senthire.api.deps import get_db, get_org, parse_uuid
+from senthire.api.enqueue import enqueue_after_commit
 from senthire.config import get_settings
 from senthire.db.models import AuditLog, EvaluationSpecRow, Job, Organization
 from senthire.domain.spec import EvaluationSpec
@@ -83,7 +84,7 @@ def compile_requirements(
 
     from senthire.workers.tasks.screen import compile_spec_task
 
-    compile_spec_task.delay(str(row.id))
+    enqueue_after_commit(session, compile_spec_task, str(row.id))
     return _spec_out(row)
 
 

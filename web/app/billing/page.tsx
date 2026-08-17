@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import type { BillingDetails, BillingInfo, Me } from "@/lib/types";
+import { useSession } from "@/lib/session";
+import type { BillingDetails, BillingInfo } from "@/lib/types";
 
 const STATUS_LABEL: Record<string, string> = {
   trial: "Deneme",
@@ -32,7 +33,7 @@ function periodLabel(period: string): string {
 }
 
 export default function BillingPage() {
-  const [me, setMe] = useState<Me | null>(null);
+  const { isAdmin } = useSession();
   const [info, setInfo] = useState<BillingInfo | null>(null);
   const [details, setDetails] = useState<BillingDetails>(EMPTY_DETAILS);
   const [showDetailsForm, setShowDetailsForm] = useState(false);
@@ -43,7 +44,6 @@ export default function BillingPage() {
   const [error, setError] = useState<string | null>(null);
   const checkoutRef = useRef<HTMLDivElement>(null);
 
-  const isAdmin = me?.user.role === "admin";
 
   const refresh = useCallback(async () => {
     const data = await api.billingInfo();
@@ -53,9 +53,7 @@ export default function BillingPage() {
   }, []);
 
   useEffect(() => {
-    Promise.all([api.me().then(setMe), refresh()]).catch((e) =>
-      setError((e as Error).message),
-    );
+    refresh().catch((e) => setError((e as Error).message));
     const params = new URLSearchParams(window.location.search);
     const checkout = params.get("checkout");
     if (checkout === "success") {

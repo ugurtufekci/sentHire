@@ -15,11 +15,7 @@ def upgrade() -> None:
         "subscriptions",
         sa.Column("id", UUID(as_uuid=True), primary_key=True),
         sa.Column(
-            "org_id",
-            UUID(as_uuid=True),
-            sa.ForeignKey("organizations.id"),
-            nullable=False,
-            unique=True,
+            "org_id", UUID(as_uuid=True), sa.ForeignKey("organizations.id"), nullable=False
         ),
         sa.Column("plan_id", sa.Text(), nullable=False),
         sa.Column(
@@ -36,7 +32,9 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("canceled_at", sa.DateTime(timezone=True), nullable=True),
     )
-    op.create_index("ix_subscriptions_org_id", "subscriptions", ["org_id"])
+    # unique index (not an inline constraint) so the DB matches the ORM's
+    # mapped_column(unique=True, index=True) exactly — see the drift test
+    op.create_index("ix_subscriptions_org_id", "subscriptions", ["org_id"], unique=True)
 
     op.create_table(
         "usage_counters",
