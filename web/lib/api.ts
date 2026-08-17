@@ -1,6 +1,11 @@
 import type {
   CandidatesResponse,
+  InvitationLookup,
   Job,
+  Me,
+  Member,
+  OrgInfo,
+  PendingInvitation,
   ResultDetail,
   ResultsResponse,
   RunStatus,
@@ -10,17 +15,6 @@ import type {
   UploadSlot,
 } from "@/lib/types";
 
-const API_KEY_STORAGE = "senthire_api_key";
-
-export function getApiKey(): string {
-  if (typeof window === "undefined") return "dev-local-key";
-  return localStorage.getItem(API_KEY_STORAGE) ?? "dev-local-key";
-}
-
-export function setApiKey(value: string) {
-  localStorage.setItem(API_KEY_STORAGE, value);
-}
-
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -29,12 +23,18 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+/** Auth is a server-side session cookie (HttpOnly), sent automatically on
+ *  same-origin requests. On 401 we bounce to /login — except for the auth
+ *  endpoints themselves, where the caller renders the error inline. */
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+  opts?: { redirectOn401?: boolean },
+): Promise<T> {
   const response = await fetch(`/api/v1${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      "X-API-Key": getApiKey(),
       ...(init?.headers ?? {}),
     },
   });
@@ -46,12 +46,62 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* keep statusText */
     }
+    if (
+      response.status === 401 &&
+      (opts?.redirectOn401 ?? true) &&
+      typeof window !== "undefined" &&
+      !window.location.pathname.startsWith("/login")
+    ) {
+      window.location.assign("/login");
+    }
     throw new ApiError(response.status, detail);
   }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
 export const api = {
+  // --- auth & workspace ---
+  me: () => request<Me>("/auth/me", undefined, { redirectOn401: false }),
+  signup: (payload: { company_name: string; name: string; email: string; password: string }) =>
+    request<Me>(
+      "/auth/signup",
+      { method: "POST", body: JSON.stringify(payload) },
+      { redirectOn401: false },
+    ),
+  login: (email: string, password: string) =>
+    request<Me>(
+      "/auth/login",
+      { method: "POST", body: JSON.stringify({ email, password }) },
+      { redirectOn401: false },
+    ),
+  logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
+  invitationLookup: (token: string) =>
+    request<InvitationLookup>(`/auth/invitations/${token}`, undefined, { redirectOn401: false }),
+  acceptInvitation: (token: string, payload: { name: string; password: string }) =>
+    request<Me>(
+      `/auth/invitations/${token}/accept`,
+      { method: "POST", body: JSON.stringify(payload) },
+      { redirectOn401: false },
+    ),
+
+  orgInfo: () => request<OrgInfo>("/org"),
+  listMembers: () => request<Member[]>("/org/members"),
+  listInvitations: () => request<PendingInvitation[]>("/org/invitations"),
+  createInvitation: (email: string, role: "admin" | "member") =>
+    request<PendingInvitation & { invite_url: string }>("/org/invitations", {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    }),
+  revokeInvitation: (invitationId: string) =>
+    request<void>(`/org/invitations/${invitationId}`, { method: "DELETE" }),
+  updateMember: (userId: string, patch: { role?: "admin" | "member"; is_active?: boolean }) =>
+    request<Member>(`/org/members/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+
+  // --- product ---
   listTemplates: () => request<Template[]>("/templates"),
   listJobs: () => request<Job[]>("/jobs"),
   getJob: (jobId: string) => request<Job>(`/jobs/${jobId}`),

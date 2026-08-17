@@ -3,11 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from senthire import __version__
 from senthire.api.routes import (
+    auth,
     candidates,
     health,
     jobs,
     requirements,
     runs,
+    team,
     templates,
     uploads,
 )
@@ -24,6 +26,8 @@ def create_app() -> FastAPI:
     )
     prefix = "/api/v1"
     app.include_router(health.router, prefix=prefix)
+    app.include_router(auth.router, prefix=prefix)
+    app.include_router(team.router, prefix=prefix)
     app.include_router(templates.router, prefix=prefix)
     app.include_router(jobs.router, prefix=prefix)
     app.include_router(uploads.router, prefix=prefix)

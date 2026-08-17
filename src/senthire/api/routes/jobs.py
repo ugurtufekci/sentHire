@@ -3,8 +3,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from senthire.api.deps import get_db, get_org, parse_uuid
-from senthire.db.models import Job, JobTemplate, Organization
+from senthire.api.deps import get_current_user, get_db, get_org, parse_uuid
+from senthire.db.models import Job, JobTemplate, Organization, User
 
 router = APIRouter(tags=["jobs"])
 
@@ -27,7 +27,7 @@ def _job_out(job: Job) -> dict:
 @router.post("/jobs", status_code=201)
 def create_job(
     payload: JobCreate,
-    org: Organization = Depends(get_org),
+    user: User = Depends(get_current_user),
     session: Session = Depends(get_db),
 ) -> dict:
     template_id = None
@@ -38,7 +38,9 @@ def create_job(
         if template is None:
             raise HTTPException(status_code=404, detail="template not found")
         template_id = template.id
-    job = Job(org_id=org.id, title=payload.title, template_id=template_id)
+    job = Job(
+        org_id=user.org_id, title=payload.title, template_id=template_id, created_by=user.id
+    )
     session.add(job)
     session.flush()
     return _job_out(job)

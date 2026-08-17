@@ -1,5 +1,45 @@
 // API response types — mirror src/senthire/api/routes/* response shapes.
 
+export type Role = "admin" | "member";
+
+export interface Me {
+  user: { id: string; email: string; name: string; role: Role };
+  org: { id: string; name: string };
+}
+
+export interface Member {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  is_active: boolean;
+  last_login_at: string | null;
+  created_at: string | null;
+}
+
+export interface PendingInvitation {
+  id: string;
+  email: string;
+  role: Role;
+  created_at: string | null;
+  expires_at: string;
+}
+
+export interface OrgInfo {
+  id: string;
+  name: string;
+  seat_limit: number | null;
+  active_members: number;
+  pending_invitations: number;
+}
+
+export interface InvitationLookup {
+  email: string;
+  org_name: string;
+  invited_by: string;
+  expires_at: string;
+}
+
 export interface Job {
   id: string;
   title: string;

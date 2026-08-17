@@ -45,9 +45,19 @@ class Settings(BaseSettings):
     deep_confidence_threshold: float = 0.7
     deep_weight_threshold: float = 0.10  # req weight share that makes low confidence matter
 
-    # DEV ONLY placeholder auth: requests with this key act as the auto-created dev
-    # org. Replaced by real signup/session auth in the auth milestone.
-    dev_api_key: str = "dev-local-key"
+    # --- auth & sessions ---
+    session_cookie_name: str = "senthire_session"
+    session_ttl_days: int = 30
+    invitation_ttl_days: int = 7
+    # Set true behind HTTPS so the session cookie is marked Secure.
+    secure_cookies: bool = False
+    # Used to build invitation links shown to admins.
+    app_base_url: str = "http://localhost:3000"
+
+    # OPT-IN dev backdoor for curl/scripts: requests with this key act as an
+    # auto-provisioned "Dev Org" admin. Unset (None) by default so production
+    # deployments are cookie-session only; docker-compose sets it for local dev.
+    dev_api_key: str | None = None
 
     prompt_versions: dict[str, str] = {
         "extract": "extract_v1",

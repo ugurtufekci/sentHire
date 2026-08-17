@@ -80,9 +80,9 @@ cd web && npm install && npm run dev   # http://localhost:3000
 ```
 
 The dev server proxies `/api/*` to `http://localhost:8000` (override with
-`API_PROXY_TARGET`), so run the API + worker alongside it. Auth uses the same
-dev placeholder: the browser sends `X-API-Key: dev-local-key` (stored in
-localStorage as `senthire_api_key`).
+`API_PROXY_TARGET`), so run the API + worker alongside it. Sign up at
+`/signup` to create a workspace; the session cookie flows through the proxy
+because everything is same-origin.
 
 Two things matter for uploads to work from a browser:
 
@@ -99,13 +99,31 @@ Two things matter for uploads to work from a browser:
 
 `make test` runs the pure-logic suites (no network, no DB): derived-field date math,
 the predicate DSL, the deterministic scorer (pinned to the docs/06 worked example),
-PDF text-layer detection, and schema validation of the seed templates.
+PDF text-layer detection, schema validation of the seed templates, and the auth
+building blocks (argon2 round-trip, token hashing, cookie flags, pre-DB 401 guards).
 
-## Auth (temporary)
+## Auth & workspaces (B2B tenancy)
 
-`X-API-Key: dev-local-key` maps every request to an auto-created "Dev Org". This is a
-placeholder wired through a single dependency (`senthire/api/deps.py::get_org`);
-the signup/session auth milestone replaces only that function.
+The signup unit is the **company**: the first user creates the organization
+(workspace) and becomes its admin. Colleagues never sign up separately — an admin
+creates an invitation on the **Ekip** page and shares the link; accepting it adds
+the colleague to the *same* organization. Everyone in a workspace sees the same
+jobs, candidates, and results; all queries are org-scoped through one dependency
+chain (`senthire/api/deps.py::get_current_user → get_org`).
+
+Mechanics:
+
+- Browser auth is a server-side session: HttpOnly `senthire_session` cookie holding
+  an opaque token; the DB stores only its sha256 (`auth_sessions`). Passwords are
+  argon2 hashes. Set `SENTHIRE_SECURE_COOKIES=true` behind HTTPS.
+- Invitations (`invitations`) expire after 7 days; the raw link is shown once to
+  the admin (only the token hash is stored). Email delivery is a later milestone.
+- Roles: `admin` (invite/manage members) and `member`. The API refuses to demote
+  or deactivate the last active admin. Deactivating a member revokes their sessions.
+- Optional `organizations.seat_limit` caps active members + pending invitations.
+- Curl/scripting backdoor: if `SENTHIRE_DEV_API_KEY` is set (docker-compose sets
+  `dev-local-key`; unset in production), requests with that `X-API-Key` act as an
+  auto-provisioned "Dev Org" admin — this is what the quickstart curl examples use.
 
 ## Repository layout
 

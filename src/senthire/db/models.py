@@ -6,6 +6,7 @@ from datetime import datetime
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     DateTime,
     Float,
     ForeignKey,
@@ -30,6 +31,9 @@ class Organization(Base):
     name: Mapped[str] = mapped_column(Text)
     region: Mapped[str] = mapped_column(Text, server_default=text("'eu'"))
     settings: Mapped[dict] = mapped_column(JSONB, server_default=JSONB_EMPTY_OBJ)
+    # None = unlimited. Enforced on invitation create/accept (active members +
+    # pending invitations), not retroactively.
+    seat_limit: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = created_at_col()
 
 
@@ -37,10 +41,49 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = uuid_pk()
-    org_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"))
+    org_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), index=True)
     email: Mapped[str] = mapped_column(CITEXT, unique=True)
-    role: Mapped[str] = mapped_column(Text)  # owner | recruiter | viewer
+    name: Mapped[str] = mapped_column(Text, server_default=text("''"))
+    role: Mapped[str] = mapped_column(Text)  # admin | member
+    # Nullable: the auto-provisioned dev-key user has no password.
+    password_hash: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_col()
+
+
+class AuthSession(Base):
+    """Server-side browser session; the cookie carries only the raw token.
+
+    Only the sha256 of the token is stored, so a database leak does not leak
+    usable session credentials.
+    """
+
+    __tablename__ = "auth_sessions"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(Text, unique=True)
+    created_at: Mapped[datetime] = created_at_col()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Invitation(Base):
+    """Admin-issued invitation for a colleague to join the organization."""
+
+    __tablename__ = "invitations"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), index=True)
+    email: Mapped[str] = mapped_column(CITEXT)
+    role: Mapped[str] = mapped_column(Text, server_default=text("'member'"))
+    token_hash: Mapped[str] = mapped_column(Text, unique=True)
+    invited_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = created_at_col()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class JobTemplate(Base):

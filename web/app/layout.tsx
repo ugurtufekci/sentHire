@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import UserMenu from "@/components/UserMenu";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/">İlanlar</Link>
             </nav>
             <div className="spacer" />
-            <span className="tiny">geliştirme sürümü</span>
+            <UserMenu />
           </header>
           {children}
         </div>

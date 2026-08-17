@@ -1,4 +1,4 @@
-"""Dev/bootstrap seeding: job templates + the dev organization.
+"""Bootstrap seeding: built-in job templates.
 
 Usage:  python -m senthire.seed
 """
@@ -9,7 +9,7 @@ from importlib import resources
 from sqlalchemy import select
 
 from senthire.config import get_settings
-from senthire.db.models import JobTemplate, Organization
+from senthire.db.models import JobTemplate
 from senthire.db.session import get_sessionmaker
 from senthire.domain.spec import EvaluationSpec
 
@@ -45,14 +45,12 @@ def main() -> None:
     session = get_sessionmaker()()
     try:
         n = seed_templates(session)
-        org = session.scalar(select(Organization).where(Organization.name == "Dev Org"))
-        if org is None and settings.env == "dev":
-            org = Organization(name="Dev Org")
-            session.add(org)
         session.commit()
         print(f"seeded {n} template(s)")
-        if settings.env == "dev":
-            print(f"dev org ready — use header  X-API-Key: {settings.dev_api_key}")
+        if settings.dev_api_key:
+            print(f"dev key backdoor enabled — header  X-API-Key: {settings.dev_api_key}")
+        else:
+            print("auth: cookie sessions only (sign up at /signup)")
     finally:
         session.close()
 

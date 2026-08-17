@@ -262,7 +262,54 @@ button { font: inherit; }
 
 .tiny { font-size: 12.5px; color: var(--muted); }
 
+/* ---------- auth pages ---------- */
+.auth-wrap {
+  min-height: calc(100vh - 160px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px 0;
+}
+.auth-card { width: 100%; max-width: 420px; }
+.auth-card h1 { font-size: 21px; font-weight: 650; letter-spacing: -0.01em; margin: 0 0 6px; }
+.auth-sub { color: var(--ink-2); font-size: 14px; line-height: 1.55; margin: 0 0 20px; }
+.auth-field { margin-bottom: 14px; }
+.auth-field .tiny { display: block; margin-top: 5px; }
+.auth-submit { width: 100%; justify-content: center; margin-top: 4px; }
+.auth-links {
+  margin-top: 16px; font-size: 13.5px; color: var(--ink-2);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.auth-links a { color: var(--accent); }
+
+/* ---------- user menu (topbar) ---------- */
+.user-menu { position: relative; }
+.user-menu summary {
+  list-style: none; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 6px 12px; border-radius: 999px;
+  transition: background 160ms ease;
+}
+.user-menu summary::-webkit-details-marker { display: none; }
+.user-menu summary:hover, .user-menu[open] summary { background: var(--surface-2); }
+.user-org { font-size: 13px; color: var(--ink-2); }
+.user-org::after { content: "·"; margin-left: 10px; color: var(--muted); }
+.user-name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.menu-pop {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 40;
+  min-width: 170px; padding: 6px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.menu-item {
+  display: block; width: 100%; text-align: left;
+  padding: 8px 10px; border: none; border-radius: 6px;
+  background: none; color: var(--ink);
+  font: inherit; font-size: 13.5px; cursor: pointer;
+}
+.menu-item:hover { background: var(--surface-2); color: var(--ink); }
+
 @media (max-width: 640px) {
+  .user-org { display: none; }
   .step { grid-template-columns: 1fr; }
   .step-marker { display: none; }
   .funnel-row { grid-template-columns: 110px 1fr 70px; }
