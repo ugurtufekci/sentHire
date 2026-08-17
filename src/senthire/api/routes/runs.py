@@ -65,6 +65,33 @@ def start_run(
     return {"run_id": str(run.id), "status": "queued", "spec_version": spec_row.version}
 
 
+@router.get("/jobs/{job_id}/runs")
+def list_runs(
+    job_id: str,
+    org: Organization = Depends(get_org),
+    session: Session = Depends(get_db),
+) -> list[dict]:
+    job = session.get(Job, parse_uuid(job_id, "job_id"))
+    if job is None or job.org_id != org.id:
+        raise HTTPException(status_code=404, detail="job not found")
+    runs = session.scalars(
+        select(ScreeningRun)
+        .where(ScreeningRun.job_id == job.id)
+        .order_by(ScreeningRun.started_at.desc().nulls_last())
+    ).all()
+    return [
+        {
+            "run_id": str(r.id),
+            "status": r.status,
+            "mode": r.mode,
+            "started_at": r.started_at.isoformat() if r.started_at else None,
+            "finished_at": r.finished_at.isoformat() if r.finished_at else None,
+            "funnel": r.funnel or {},
+        }
+        for r in runs
+    ]
+
+
 def _get_run(run_id: str, org: Organization, session: Session) -> ScreeningRun:
     run = session.get(ScreeningRun, parse_uuid(run_id, "run_id"))
     if run is None or run.org_id != org.id:

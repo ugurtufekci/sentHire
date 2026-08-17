@@ -12,8 +12,15 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://senthire:senthire@localhost:5432/senthire"
     redis_url: str = "redis://localhost:6379/0"
 
+    # --- web clients ---
+    cors_origins: list[str] = ["http://localhost:3000"]
+
     # --- object storage (S3-compatible; MinIO in dev) ---
     s3_endpoint_url: str | None = "http://localhost:9000"
+    # Endpoint browsers can reach for presigned PUT/GET (signature binds the host,
+    # so inside docker-compose the internal "minio:9000" endpoint can't be used
+    # by the browser). Defaults to s3_endpoint_url when unset.
+    s3_public_endpoint_url: str | None = None
     s3_region: str = "us-east-1"
     s3_bucket: str = "senthire-dev"
     s3_access_key: str = "senthire"

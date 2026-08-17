@@ -36,6 +36,8 @@ services:
       SENTHIRE_DATABASE_URL: postgresql+psycopg://senthire:senthire@db:5432/senthire
       SENTHIRE_REDIS_URL: redis://redis:6379/0
       SENTHIRE_S3_ENDPOINT_URL: http://minio:9000
+      # presigned URLs are signed for the host the BROWSER reaches
+      SENTHIRE_S3_PUBLIC_ENDPOINT_URL: http://localhost:9000
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY in your shell or .env}
     ports: ["8000:8000"]
     depends_on:
@@ -51,6 +53,14 @@ services:
       db: {condition: service_healthy}
       redis: {condition: service_started}
       minio: {condition: service_started}
+
+  web:
+    build: ./web
+    environment:
+      API_PROXY_TARGET: http://api:8000
+    ports: ["3000:3000"]
+    depends_on:
+      api: {condition: service_started}
 
 volumes:
   pgdata:

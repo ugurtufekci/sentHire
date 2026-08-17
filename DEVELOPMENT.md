@@ -8,7 +8,10 @@ docker compose up --build
 ```
 
 This starts Postgres (pgvector), Redis, MinIO, the API (with migrations + seed run
-automatically) and a Celery worker. Then:
+automatically), a Celery worker and the web app at http://localhost:3000 — the
+whole flow (job → criteria → CVs → run → explained ranking) works from the browser.
+
+The same flow over raw HTTP, if you prefer curl:
 
 ```bash
 # All requests use the dev placeholder auth header (see below)
@@ -70,6 +73,28 @@ make api      # terminal 1
 make worker   # terminal 2
 ```
 
+## Web app (local dev)
+
+```bash
+cd web && npm install && npm run dev   # http://localhost:3000
+```
+
+The dev server proxies `/api/*` to `http://localhost:8000` (override with
+`API_PROXY_TARGET`), so run the API + worker alongside it. Auth uses the same
+dev placeholder: the browser sends `X-API-Key: dev-local-key` (stored in
+localStorage as `senthire_api_key`).
+
+Two things matter for uploads to work from a browser:
+
+- The browser PUTs files **directly to S3/MinIO** with presigned URLs. SigV4
+  signatures bind the host, so the API signs them against
+  `SENTHIRE_S3_PUBLIC_ENDPOINT_URL` (the endpoint the *browser* reaches —
+  `http://localhost:9000` in compose) while talking to MinIO over the internal
+  endpoint itself.
+- In compose, the `web` container proxies `/api/*` to `http://api:8000` via
+  `API_PROXY_TARGET`. The image runs `next start` (not the standalone server)
+  precisely so that rewrite target is read at container start, not baked at build.
+
 ## Tests
 
 `make test` runs the pure-logic suites (no network, no DB): derived-field date math,
@@ -97,6 +122,10 @@ src/senthire/
   templates_seed/           built-in job templates (validated EvaluationSpec seeds)
 migrations/                 Alembic (0001 = docs/03 schema)
 tests/                      pure-logic test suites
+web/                        Next.js app (App Router): the HR-facing product UI
+  app/                      pages: home, job creation, 3-step job journey, run results
+  components/               RequirementsStep, UploadStep, CandidateDrawer
+  lib/                      typed API client, shared types, Turkish label maps
 ```
 
 ## Conventions
