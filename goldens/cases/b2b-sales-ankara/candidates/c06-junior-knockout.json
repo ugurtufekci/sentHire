@@ -1,0 +1,49 @@
+{
+  "golden_id": "c06-junior-knockout",
+  "note": "18 months of experience against a 36-month hard floor: well outside the borderline band, so Stage 3 knocks out deterministically at zero model cost.",
+  "profile": {
+    "document_kind": "cv",
+    "language": "tr",
+    "location": {"raw": "Ankara", "city_canonical": "Ankara", "country": "TR"},
+    "experience": [
+      {
+        "title_raw": "Satış Destek Uzmanı",
+        "title_canonical": "sales_support_specialist",
+        "company": "Nova Yazılım",
+        "industry_canonical": "saas",
+        "employment_type": "full_time",
+        "start": "2025-03",
+        "is_current": true,
+        "description_summary": "Prepares quotes and supports the field sales team.",
+        "signals": {"b2b": true, "quota_carrying": false, "crm_tools": ["hubspot"]}
+      }
+    ],
+    "education": [
+      {"degree": "bachelor", "field_raw": "İşletme", "institution": "Hacettepe Üniversitesi", "end_year": 2024}
+    ],
+    "skills": [{"name_raw": "Teklif hazırlama", "evidence": "demonstrated"}],
+    "languages": [
+      {"language": "tr", "cefr": "native"},
+      {"language": "en", "level_raw": "B2", "cefr": "B2"}
+    ],
+    "industries": ["saas"],
+    "tools_technologies": ["hubspot"],
+    "confidence": 0.9
+  },
+  "labels": {
+    "semantic": {
+      "R2_b2b_sales_3y": {"verdict": "not_met", "confidence": 0.95, "info_status": "explicit"},
+      "R3_sales_depth": {"verdict": "partially_met", "score": 0.35, "confidence": 0.85, "info_status": "explicit"},
+      "R6_saas_bonus": {"verdict": "met", "confidence": 0.9, "info_status": "explicit"}
+    },
+    "expected_deterministic": {
+      "R1_experience_floor": "not_met",
+      "R4_location_ankara": "met",
+      "R5_english_b2": "met",
+      "R7_job_hopping": "not_met"
+    },
+    "gate": "fail",
+    "knockout_reqs": ["R1_experience_floor", "R2_b2b_sales_3y"],
+    "borderline": false
+  }
+}

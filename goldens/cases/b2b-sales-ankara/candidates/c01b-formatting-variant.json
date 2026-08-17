@@ -1,0 +1,120 @@
+{
+  "golden_id": "c01b-formatting-variant",
+  "note": "Counterfactual twin of c01: identical facts, cosmetic differences only (list order, wording of summaries). Must score identically — the scorer may only read verdicts, never prose.",
+  "variant_of": "c01-strong-match",
+  "profile": {
+    "document_kind": "cv",
+    "language": "tr",
+    "location": {
+      "raw": "ANKARA / TR",
+      "city_canonical": "Ankara",
+      "country": "TR"
+    },
+    "experience": [
+      {
+        "title_raw": "Sr. Sales Specialist",
+        "title_canonical": "senior_sales_specialist",
+        "company": "Veri Teknoloji",
+        "industry_canonical": "saas",
+        "employment_type": "full_time",
+        "start": "2023-06",
+        "is_current": true,
+        "description_summary": "Kurumsal müşterilere veri analitiği SaaS satışı; kapanışın sahibi.",
+        "signals": {
+          "b2b": true,
+          "quota_carrying": true,
+          "crm_tools": [
+            "hubspot"
+          ]
+        }
+      },
+      {
+        "title_raw": "Sales Specialist",
+        "title_canonical": "sales_specialist",
+        "company": "Bulut Yazılım A.Ş.",
+        "industry_canonical": "saas",
+        "employment_type": "full_time",
+        "start": "2020-06",
+        "end": "2023-05",
+        "description_summary": "İK SaaS ürünü için uçtan uca B2B satış hunisi; hedefler tutturuldu.",
+        "signals": {
+          "b2b": true,
+          "quota_carrying": true,
+          "crm_tools": [
+            "salesforce"
+          ]
+        }
+      }
+    ],
+    "education": [
+      {
+        "degree": "bachelor",
+        "field_raw": "Business Administration",
+        "institution": "Ankara Üniversitesi",
+        "end_year": 2019
+      }
+    ],
+    "skills": [
+      {
+        "name_raw": "Negotiation",
+        "evidence": "demonstrated"
+      },
+      {
+        "name_raw": "Pipeline management",
+        "evidence": "demonstrated"
+      }
+    ],
+    "languages": [
+      {
+        "language": "en",
+        "level_raw": "Advanced",
+        "cefr": "C1"
+      },
+      {
+        "language": "tr",
+        "cefr": "native"
+      }
+    ],
+    "industries": [
+      "saas"
+    ],
+    "tools_technologies": [
+      "hubspot",
+      "salesforce"
+    ],
+    "confidence": 0.9
+  },
+  "labels": {
+    "semantic": {
+      "R2_b2b_sales_3y": {
+        "verdict": "met",
+        "confidence": 0.95,
+        "info_status": "explicit"
+      },
+      "R3_sales_depth": {
+        "verdict": "met",
+        "score": 0.9,
+        "confidence": 0.9,
+        "info_status": "explicit"
+      },
+      "R6_saas_bonus": {
+        "verdict": "met",
+        "confidence": 0.95,
+        "info_status": "explicit"
+      }
+    },
+    "expected_deterministic": {
+      "R1_experience_floor": "met",
+      "R4_location_ankara": "met",
+      "R5_english_b2": "met",
+      "R7_job_hopping": "not_met"
+    },
+    "gate": "pass",
+    "band": "top",
+    "needs_review": false,
+    "score_range": [
+      96.3,
+      96.3
+    ]
+  }
+}

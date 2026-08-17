@@ -1,10 +1,16 @@
-.PHONY: install test lint api worker migrate seed up
+.PHONY: install test lint api worker migrate seed up evals evals-live
 
 install:
 	pip install -e ".[dev]"
 
 test:
 	pytest
+
+evals:
+	python -m senthire.evals
+
+evals-live:
+	python -m senthire.evals --live
 
 lint:
 	ruff check src tests

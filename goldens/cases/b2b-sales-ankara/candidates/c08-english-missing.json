@@ -1,0 +1,91 @@
+{
+  "golden_id": "c08-english-missing",
+  "note": "Solid Ankara-based B2B seller whose CV never mentions languages: the English requirement resolves to unknown and its weight redistributes instead of dragging the score down.",
+  "profile": {
+    "document_kind": "cv",
+    "language": "tr",
+    "location": {
+      "raw": "Ankara / Etimesgut",
+      "city_canonical": "Ankara",
+      "country": "TR"
+    },
+    "experience": [
+      {
+        "title_raw": "Kurumsal Satış Uzmanı",
+        "title_canonical": "enterprise_sales_specialist",
+        "company": "Baskent Endüstri",
+        "industry_canonical": "industrial_equipment",
+        "employment_type": "full_time",
+        "start": "2022-07",
+        "is_current": true,
+        "description_summary": "Sells industrial equipment to factories across Central Anatolia; owns quota.",
+        "signals": {
+          "b2b": true,
+          "quota_carrying": true,
+          "crm_tools": [
+            "salesforce"
+          ]
+        }
+      }
+    ],
+    "education": [
+      {
+        "degree": "bachelor",
+        "field_raw": "Makine Mühendisliği",
+        "institution": "ODTÜ",
+        "end_year": 2021
+      }
+    ],
+    "skills": [
+      {
+        "name_raw": "Teknik satış",
+        "evidence": "demonstrated"
+      },
+      {
+        "name_raw": "Keşif görüşmesi",
+        "evidence": "demonstrated"
+      }
+    ],
+    "languages": [],
+    "industries": [
+      "industrial_equipment"
+    ],
+    "tools_technologies": [
+      "salesforce"
+    ],
+    "confidence": 0.85
+  },
+  "labels": {
+    "semantic": {
+      "R2_b2b_sales_3y": {
+        "verdict": "met",
+        "confidence": 0.9,
+        "info_status": "explicit"
+      },
+      "R3_sales_depth": {
+        "verdict": "met",
+        "score": 0.85,
+        "confidence": 0.9,
+        "info_status": "explicit"
+      },
+      "R6_saas_bonus": {
+        "verdict": "not_met",
+        "confidence": 0.9,
+        "info_status": "explicit"
+      }
+    },
+    "expected_deterministic": {
+      "R1_experience_floor": "met",
+      "R4_location_ankara": "met",
+      "R5_english_b2": "unknown",
+      "R7_job_hopping": "not_met"
+    },
+    "gate": "pass",
+    "needs_review": false,
+    "band": "top",
+    "score_range": [
+      86.4,
+      86.4
+    ]
+  }
+}

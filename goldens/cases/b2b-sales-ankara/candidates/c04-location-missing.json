@@ -1,0 +1,93 @@
+{
+  "golden_id": "c04-location-missing",
+  "note": "CV states no city at all: the location requirement must resolve to unknown and its weight redistribute — missing is never treated as a failure (missing ≠ negative).",
+  "profile": {
+    "document_kind": "cv",
+    "language": "tr",
+    "location": {},
+    "experience": [
+      {
+        "title_raw": "Satış Uzmanı",
+        "title_canonical": "sales_specialist",
+        "company": "Sinerji SaaS",
+        "industry_canonical": "saas",
+        "employment_type": "full_time",
+        "start": "2020-09",
+        "is_current": true,
+        "description_summary": "Mid-market B2B subscriptions for an accounting SaaS; renewals and upsells.",
+        "signals": {
+          "b2b": true,
+          "quota_carrying": true,
+          "crm_tools": [
+            "pipedrive"
+          ]
+        }
+      }
+    ],
+    "education": [
+      {
+        "degree": "bachelor",
+        "field_raw": "İşletme",
+        "institution": "Anadolu Üniversitesi",
+        "end_year": 2020
+      }
+    ],
+    "skills": [
+      {
+        "name_raw": "Yenileme/upsell",
+        "evidence": "demonstrated"
+      }
+    ],
+    "languages": [
+      {
+        "language": "tr",
+        "cefr": "native"
+      },
+      {
+        "language": "en",
+        "level_raw": "B2",
+        "cefr": "B2"
+      }
+    ],
+    "industries": [
+      "saas"
+    ],
+    "tools_technologies": [
+      "pipedrive"
+    ],
+    "confidence": 0.86
+  },
+  "labels": {
+    "semantic": {
+      "R2_b2b_sales_3y": {
+        "verdict": "met",
+        "confidence": 0.9,
+        "info_status": "explicit"
+      },
+      "R3_sales_depth": {
+        "verdict": "met",
+        "score": 0.8,
+        "confidence": 0.85,
+        "info_status": "explicit"
+      },
+      "R6_saas_bonus": {
+        "verdict": "met",
+        "confidence": 0.9,
+        "info_status": "explicit"
+      }
+    },
+    "expected_deterministic": {
+      "R1_experience_floor": "met",
+      "R4_location_ankara": "unknown",
+      "R5_english_b2": "met",
+      "R7_job_hopping": "not_met"
+    },
+    "gate": "pass",
+    "needs_review": false,
+    "band": "top",
+    "score_range": [
+      84.2,
+      84.2
+    ]
+  }
+}

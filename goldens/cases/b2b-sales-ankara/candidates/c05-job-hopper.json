@@ -1,0 +1,150 @@
+{
+  "golden_id": "c05-job-hopper",
+  "note": "Five sub-year B2B stints in five years: passes every gate but takes the job-hopping penalty ('olmasın' → deprioritize, not reject).",
+  "profile": {
+    "document_kind": "cv",
+    "language": "tr",
+    "location": {
+      "raw": "Ankara Çankaya",
+      "city_canonical": "Ankara",
+      "country": "TR"
+    },
+    "experience": [
+      {
+        "title_raw": "Satış Temsilcisi",
+        "company": "Alfa Medikal",
+        "industry_canonical": "medical_devices",
+        "employment_type": "full_time",
+        "start": "2021-09",
+        "end": "2022-06",
+        "signals": {
+          "b2b": true,
+          "crm_tools": []
+        }
+      },
+      {
+        "title_raw": "Saha Satış Uzmanı",
+        "company": "Beta Gıda Dağıtım",
+        "industry_canonical": "food_distribution",
+        "employment_type": "full_time",
+        "start": "2022-07",
+        "end": "2023-04",
+        "signals": {
+          "b2b": true,
+          "crm_tools": []
+        }
+      },
+      {
+        "title_raw": "Satış Uzmanı",
+        "company": "Gama Ambalaj",
+        "industry_canonical": "packaging",
+        "employment_type": "full_time",
+        "start": "2023-05",
+        "end": "2024-02",
+        "signals": {
+          "b2b": true,
+          "crm_tools": []
+        }
+      },
+      {
+        "title_raw": "Kurumsal Satış Uzmanı",
+        "company": "Delta Enerji",
+        "industry_canonical": "energy",
+        "employment_type": "full_time",
+        "start": "2024-03",
+        "end": "2025-01",
+        "signals": {
+          "b2b": true,
+          "quota_carrying": true,
+          "crm_tools": [
+            "zoho"
+          ]
+        }
+      },
+      {
+        "title_raw": "Satış Uzmanı",
+        "company": "Epsilon Telekom",
+        "industry_canonical": "telecom",
+        "employment_type": "full_time",
+        "start": "2025-02",
+        "is_current": true,
+        "signals": {
+          "b2b": true,
+          "quota_carrying": true,
+          "crm_tools": [
+            "zoho"
+          ]
+        }
+      }
+    ],
+    "education": [
+      {
+        "degree": "associate",
+        "field_raw": "Pazarlama",
+        "institution": "Ankara MYO",
+        "end_year": 2021
+      }
+    ],
+    "skills": [
+      {
+        "name_raw": "Saha satışı",
+        "evidence": "demonstrated"
+      }
+    ],
+    "languages": [
+      {
+        "language": "tr",
+        "cefr": "native"
+      },
+      {
+        "language": "en",
+        "level_raw": "Orta üstü",
+        "cefr": "B2"
+      }
+    ],
+    "industries": [
+      "medical_devices",
+      "food_distribution",
+      "packaging",
+      "energy",
+      "telecom"
+    ],
+    "tools_technologies": [
+      "zoho"
+    ],
+    "confidence": 0.89
+  },
+  "labels": {
+    "semantic": {
+      "R2_b2b_sales_3y": {
+        "verdict": "met",
+        "confidence": 0.9,
+        "info_status": "explicit"
+      },
+      "R3_sales_depth": {
+        "verdict": "met",
+        "score": 0.7,
+        "confidence": 0.85,
+        "info_status": "explicit"
+      },
+      "R6_saas_bonus": {
+        "verdict": "not_met",
+        "confidence": 0.9,
+        "info_status": "explicit"
+      }
+    },
+    "expected_deterministic": {
+      "R1_experience_floor": "met",
+      "R4_location_ankara": "met",
+      "R5_english_b2": "met",
+      "R7_job_hopping": "met"
+    },
+    "gate": "pass",
+    "needs_review": false,
+    "band": "strong",
+    "score_range": [
+      70.8,
+      70.8
+    ]
+  }
+}

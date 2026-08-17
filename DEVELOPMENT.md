@@ -127,8 +127,27 @@ Providers (`SENTHIRE_BILLING_PROVIDER`):
 
 `make test` runs the pure-logic suites (no network, no DB): derived-field date math,
 the predicate DSL, the deterministic scorer (pinned to the docs/06 worked example),
-PDF text-layer detection, schema validation of the seed templates, and the auth
-building blocks (argon2 round-trip, token hashing, cookie flags, pre-DB 401 guards).
+PDF text-layer detection, schema validation of the seed templates, the auth
+building blocks (argon2 round-trip, token hashing, cookie flags, pre-DB 401 guards),
+and the golden set (below).
+
+## Golden-set evaluation
+
+`goldens/` holds hand-labeled reference candidates and specs; the harness runs
+them through the real pipeline stages and diffs every outcome against the labels
+(see `goldens/README.md` for the labeling format).
+
+```bash
+make evals        # offline: predicates+merge+scorer must match labels 100%
+make evals-live   # additionally grades the real light-screening model
+                  # against the labels (needs ANTHROPIC_API_KEY; costs cents)
+```
+
+Offline mode is also wired into `make test`, so any change that shifts a golden
+verdict, gate, band, or pinned score fails CI with the exact candidate and field
+that moved. Live mode reports an exact-agreement rate against
+`--min-agreement` (default 85%) plus token usage — run it before shipping prompt
+or model changes.
 
 ## Auth & workspaces (B2B tenancy)
 

@@ -1,0 +1,13 @@
+{
+  "as_of": "2026-08-01",
+  "top_k": 3,
+  "expected_top": ["c01-strong-match", "c01b-formatting-variant", "c08-english-missing"],
+  "expected_order_pairs": [
+    ["c01-strong-match", "c05-job-hopper"],
+    ["c05-job-hopper", "c07-b2b-unverified"],
+    ["c04-location-missing", "c07-b2b-unverified"]
+  ],
+  "fairness_pairs": [
+    ["c01-strong-match", "c01b-formatting-variant"]
+  ]
+}

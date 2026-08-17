@@ -1,0 +1,108 @@
+{
+  "schema_version": "1.0",
+  "version": 1,
+  "locale": "tr",
+  "weights": {
+    "relevant_experience": 0.6,
+    "location": 0.25,
+    "language": 0.15
+  },
+  "bonus_cap": 10.0,
+  "requirements": [
+    {
+      "req_id": "R1_experience_floor",
+      "category": "relevant_experience",
+      "label": {"tr": "En az 3 yıl toplam deneyim", "en": "≥3 years total experience"},
+      "type": "hard",
+      "importance": "critical",
+      "evaluator": "deterministic",
+      "deterministic": {
+        "predicate": {"field": "derived.total_experience_months", "op": ">=", "value": 36},
+        "borderline_tolerance": 0.1
+      },
+      "missing_policy": "unknown",
+      "source": {"kind": "hr_text", "original": "En az 3 yıl B2B satış deneyimi olsun."}
+    },
+    {
+      "req_id": "R2_b2b_sales_3y",
+      "category": "relevant_experience",
+      "label": {"tr": "En az 3 yıl B2B satış deneyimi", "en": "≥3 years of B2B sales"},
+      "type": "hard",
+      "importance": "critical",
+      "evaluator": "semantic",
+      "semantic": {
+        "rubric": "Verify at least 3 years of business-to-business sales experience. Count only roles selling to companies; cite the roles and durations you counted.",
+        "target_field": "experience"
+      },
+      "missing_policy": "unknown",
+      "source": {"kind": "hr_text", "original": "En az 3 yıl B2B satış deneyimi olsun."}
+    },
+    {
+      "req_id": "R3_sales_depth",
+      "category": "relevant_experience",
+      "label": {"tr": "Satış derinliği", "en": "Depth of sales ownership"},
+      "type": "scored",
+      "importance": "critical",
+      "evaluator": "semantic",
+      "semantic": {
+        "rubric": "Score how substantial the hands-on sales ownership is: pipeline ownership, closing, quota responsibility score higher than support roles. Cite evidence.",
+        "target_field": "experience"
+      },
+      "weight_within_category": 1.0,
+      "source": {"kind": "template"}
+    },
+    {
+      "req_id": "R4_location_ankara",
+      "category": "location",
+      "label": {"tr": "Ankara'da ikamet", "en": "Based in Ankara"},
+      "type": "scored",
+      "importance": "high",
+      "evaluator": "deterministic",
+      "deterministic": {
+        "predicate": {"field": "location.city_canonical", "op": "==", "value": "Ankara"}
+      },
+      "missing_policy": "unknown",
+      "source": {"kind": "hr_text", "original": "Ankara'da ikamet etmesi önemli."}
+    },
+    {
+      "req_id": "R5_english_b2",
+      "category": "language",
+      "label": {"tr": "İngilizce (en az B2)", "en": "English at B2 or above"},
+      "type": "scored",
+      "importance": "medium",
+      "evaluator": "deterministic",
+      "deterministic": {
+        "predicate": {"field": "languages['en'].cefr_rank", "op": ">=", "value": 4}
+      },
+      "missing_policy": "unknown",
+      "source": {"kind": "template"}
+    },
+    {
+      "req_id": "R6_saas_bonus",
+      "category": "industry",
+      "label": {"tr": "SaaS deneyimi (avantaj)", "en": "SaaS experience (bonus)"},
+      "type": "bonus",
+      "importance": "medium",
+      "evaluator": "semantic",
+      "semantic": {
+        "rubric": "Award the bonus only for genuine SaaS-sector experience (selling or building SaaS products), not for merely using software tools.",
+        "target_field": "experience"
+      },
+      "bonus_points": 5.0,
+      "source": {"kind": "hr_text", "original": "SaaS deneyimi varsa avantaj."}
+    },
+    {
+      "req_id": "R7_job_hopping",
+      "category": "career_stability",
+      "label": {"tr": "Sık iş değişikliği", "en": "Frequent job changes"},
+      "type": "penalty",
+      "importance": "medium",
+      "evaluator": "deterministic",
+      "deterministic": {
+        "predicate": {"field": "derived.job_changes_last_5y", "op": ">=", "value": 4},
+        "penalty_points": 8.0
+      },
+      "source": {"kind": "hr_text", "original": "Çok sık iş değiştirmiş olmasın."}
+    }
+  ]
+}

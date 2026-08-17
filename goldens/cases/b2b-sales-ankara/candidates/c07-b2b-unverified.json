@@ -1,0 +1,81 @@
+{
+  "golden_id": "c07-b2b-unverified",
+  "note": "Five years of 'satış' with no B2B/B2C signal anywhere: the hard B2B requirement stays unknown, the candidate passes the gate flagged as unverified and lands in review — never silently rejected for missing information.",
+  "profile": {
+    "document_kind": "cv",
+    "language": "tr",
+    "location": {
+      "raw": "Ankara Yenimahalle",
+      "city_canonical": "Ankara",
+      "country": "TR"
+    },
+    "experience": [
+      {
+        "title_raw": "Satış Sorumlusu",
+        "company": "Merkez Ticaret",
+        "employment_type": "full_time",
+        "start": "2021-05",
+        "is_current": true,
+        "description_summary": "Responsible for sales operations; customer segment not stated in the CV.",
+        "signals": {
+          "crm_tools": []
+        }
+      }
+    ],
+    "education": [
+      {
+        "degree": "high_school",
+        "field_raw": null,
+        "institution": null
+      }
+    ],
+    "skills": [
+      {
+        "name_raw": "Müşteri ilişkileri",
+        "evidence": "listed"
+      }
+    ],
+    "languages": [
+      {
+        "language": "tr",
+        "cefr": "native"
+      }
+    ],
+    "industries": [],
+    "tools_technologies": [],
+    "confidence": 0.74
+  },
+  "labels": {
+    "semantic": {
+      "R2_b2b_sales_3y": {
+        "verdict": "unknown",
+        "confidence": 0.4,
+        "info_status": "missing"
+      },
+      "R3_sales_depth": {
+        "verdict": "partially_met",
+        "score": 0.6,
+        "confidence": 0.6,
+        "info_status": "ambiguous"
+      },
+      "R6_saas_bonus": {
+        "verdict": "not_met",
+        "confidence": 0.8,
+        "info_status": "missing"
+      }
+    },
+    "expected_deterministic": {
+      "R1_experience_floor": "met",
+      "R4_location_ankara": "met",
+      "R5_english_b2": "unknown",
+      "R7_job_hopping": "not_met"
+    },
+    "gate": "pass",
+    "needs_review": true,
+    "band": "possible",
+    "score_range": [
+      63.3,
+      63.3
+    ]
+  }
+}

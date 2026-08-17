@@ -1,0 +1,116 @@
+{
+  "golden_id": "c03-istanbul",
+  "note": "Strong B2B seller based in İstanbul: the scored location preference lowers the score but never gates ('önemli' is a preference, not 'şart').",
+  "profile": {
+    "document_kind": "cv",
+    "language": "tr",
+    "location": {
+      "raw": "İstanbul, Kadıköy",
+      "city_canonical": "İstanbul",
+      "country": "TR"
+    },
+    "experience": [
+      {
+        "title_raw": "Kurumsal Satış Yöneticisi",
+        "title_canonical": "enterprise_sales_manager",
+        "company": "Lojistik Plus",
+        "industry_canonical": "logistics",
+        "employment_type": "full_time",
+        "start": "2019-01",
+        "end": "2022-12",
+        "description_summary": "Enterprise logistics contracts with national retail chains.",
+        "signals": {
+          "b2b": true,
+          "quota_carrying": true,
+          "crm_tools": [
+            "ms_dynamics"
+          ]
+        }
+      },
+      {
+        "title_raw": "Kıdemli Satış Yöneticisi",
+        "title_canonical": "senior_sales_manager",
+        "company": "Kargo Teknolojileri",
+        "industry_canonical": "logistics",
+        "employment_type": "full_time",
+        "start": "2023-02",
+        "is_current": true,
+        "description_summary": "B2B freight-tech platform sales; manages two account executives.",
+        "signals": {
+          "b2b": true,
+          "quota_carrying": true,
+          "people_managed": 2,
+          "crm_tools": [
+            "salesforce"
+          ]
+        }
+      }
+    ],
+    "education": [
+      {
+        "degree": "bachelor",
+        "field_raw": "Uluslararası Ticaret",
+        "institution": "Marmara Üniversitesi",
+        "end_year": 2018
+      }
+    ],
+    "skills": [
+      {
+        "name_raw": "Kurumsal müzakere",
+        "evidence": "demonstrated"
+      }
+    ],
+    "languages": [
+      {
+        "language": "tr",
+        "cefr": "native"
+      },
+      {
+        "language": "en",
+        "level_raw": "Advanced",
+        "cefr": "C1"
+      }
+    ],
+    "industries": [
+      "logistics"
+    ],
+    "tools_technologies": [
+      "salesforce",
+      "ms_dynamics"
+    ],
+    "confidence": 0.91
+  },
+  "labels": {
+    "semantic": {
+      "R2_b2b_sales_3y": {
+        "verdict": "met",
+        "confidence": 0.95,
+        "info_status": "explicit"
+      },
+      "R3_sales_depth": {
+        "verdict": "met",
+        "score": 0.9,
+        "confidence": 0.95,
+        "info_status": "explicit"
+      },
+      "R6_saas_bonus": {
+        "verdict": "not_met",
+        "confidence": 0.85,
+        "info_status": "explicit"
+      }
+    },
+    "expected_deterministic": {
+      "R1_experience_floor": "met",
+      "R4_location_ankara": "not_met",
+      "R5_english_b2": "met",
+      "R7_job_hopping": "not_met"
+    },
+    "gate": "pass",
+    "needs_review": false,
+    "band": "strong",
+    "score_range": [
+      67.7,
+      67.7
+    ]
+  }
+}
