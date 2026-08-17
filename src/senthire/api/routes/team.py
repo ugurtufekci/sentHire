@@ -11,6 +11,7 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from senthire.api.deps import get_current_user, get_db, parse_uuid, require_admin
@@ -121,8 +122,6 @@ def create_invitation(
 
     org = session.get(Organization, admin.org_id)
     pending = _pending_invitations(session, org.id)
-    if any(i.email.lower() == payload.email.lower() for i in pending):
-        raise HTTPException(status_code=409, detail="this email already has a pending invitation")
     if org.seat_limit is not None:
         active = session.scalar(
             select(func.count())
@@ -133,22 +132,52 @@ def create_invitation(
             raise HTTPException(status_code=409, detail="organization seat limit reached")
 
     settings = get_settings()
-    token = auth_service.new_token()
-    invitation = Invitation(
-        org_id=org.id,
-        email=payload.email,
-        role=payload.role,
-        token_hash=auth_service.hash_token(token),
-        invited_by=admin.id,
-        expires_at=datetime.now(UTC) + timedelta(days=settings.invitation_ttl_days),
+    # An open invitation that simply expired is refreshed rather than duplicated;
+    # a live one is a conflict. The database enforces at-most-one open invitation
+    # per address (migration 0006), so a race loses on insert rather than
+    # producing several valid links for the same person.
+    existing = session.scalar(
+        select(Invitation).where(
+            Invitation.org_id == org.id,
+            func.lower(Invitation.email) == payload.email.lower(),
+            Invitation.accepted_at.is_(None),
+            Invitation.revoked_at.is_(None),
+        )
     )
-    session.add(invitation)
-    session.flush()
+    if existing is not None:
+        if existing.expires_at > datetime.now(UTC):
+            raise HTTPException(
+                status_code=409, detail="this email already has a pending invitation"
+            )
+        invitation, token = existing, _issue_token(existing, settings)
+        invitation.role = payload.role
+        event = "team.invitation_refreshed"
+    else:
+        invitation = Invitation(
+            org_id=org.id,
+            email=payload.email,
+            role=payload.role,
+            invited_by=admin.id,
+            token_hash="",  # replaced by _issue_token below
+            expires_at=datetime.now(UTC),
+        )
+        token = _issue_token(invitation, settings)
+        session.add(invitation)
+        event = "team.invitation_created"
+
+    try:
+        session.flush()
+    except IntegrityError as exc:  # concurrent invite for the same address
+        session.rollback()
+        raise HTTPException(
+            status_code=409, detail="this email already has a pending invitation"
+        ) from exc
+
     session.add(
         AuditLog(
             org_id=org.id,
             actor=admin.id,
-            event="team.invitation_created",
+            event=event,
             entity={"invitation_id": str(invitation.id)},
             detail={"role": payload.role},
         )
@@ -162,6 +191,18 @@ def create_invitation(
         "invite_url": invite_url,
         "email_queued": email_queued,
     }
+
+
+def _issue_token(invitation: Invitation, settings) -> str:
+    """Stamp a fresh single-use token and expiry; returns the raw token.
+
+    The only place invitation tokens are minted — create and resend share it so
+    the two can never drift on TTL or hashing.
+    """
+    token = auth_service.new_token()
+    invitation.token_hash = auth_service.hash_token(token)
+    invitation.expires_at = datetime.now(UTC) + timedelta(days=settings.invitation_ttl_days)
+    return token
 
 
 def _send_invitation(org, admin: User, email: str, invite_url: str, settings) -> bool:
@@ -188,9 +229,7 @@ def resend_invitation(
         raise HTTPException(status_code=409, detail="invitation is no longer pending")
 
     settings = get_settings()
-    token = auth_service.new_token()
-    invitation.token_hash = auth_service.hash_token(token)
-    invitation.expires_at = datetime.now(UTC) + timedelta(days=settings.invitation_ttl_days)
+    token = _issue_token(invitation, settings)
     org = session.get(Organization, admin.org_id)
     session.add(
         AuditLog(

@@ -28,6 +28,7 @@ pytestmark = pytest.mark.skipif(
 EXPECTED_EXTRA_INDEXES = {
     "ix_embeddings_vector_hnsw",
     "ix_audit_log_llm_call_entity_id",
+    "uq_invitations_open_email",
 }
 
 
