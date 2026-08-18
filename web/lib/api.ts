@@ -1,4 +1,5 @@
 import type {
+  AgendaItem,
   BillingDetails,
   BillingInfo,
   CandidatesResponse,
@@ -9,12 +10,17 @@ import type {
   Member,
   OrgInfo,
   PendingInvitation,
+  PipelineBoard,
+  PipelineCard,
+  PipelineEventKind,
+  PipelineEventRow,
   ResultDetail,
   ResultsResponse,
   RunStatus,
   SpecDocument,
   SpecRow,
   Template,
+  TimelineResponse,
   UploadSlot,
 } from "@/lib/types";
 
@@ -195,4 +201,41 @@ export const api = {
   runResults: (runId: string) => request<ResultsResponse>(`/runs/${runId}/results`),
   resultDetail: (runId: string, applicationId: string) =>
     request<ResultDetail>(`/runs/${runId}/results/${applicationId}`),
+
+  // --- hiring pipeline ---
+  pipelineBoard: (jobId: string) => request<PipelineBoard>(`/jobs/${jobId}/pipeline`),
+  shortlist: (jobId: string, applicationIds: string[]) =>
+    request<{ moved: number; skipped: number }>(`/jobs/${jobId}/pipeline/shortlist`, {
+      method: "POST",
+      body: JSON.stringify({ application_ids: applicationIds }),
+    }),
+  moveStage: (applicationId: string, stage: string, note?: string) =>
+    request<PipelineCard>(`/applications/${applicationId}/stage`, {
+      method: "PATCH",
+      body: JSON.stringify({ stage, note: note ?? null }),
+    }),
+  updateApplication: (
+    applicationId: string,
+    patch: { owner_id?: string | null; next_action?: string | null; next_action_at?: string | null },
+  ) =>
+    request<PipelineCard>(`/applications/${applicationId}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+  addPipelineEvent: (
+    applicationId: string,
+    event: {
+      kind: Exclude<PipelineEventKind, "stage_change">;
+      note?: string | null;
+      occurs_at?: string | null;
+      detail?: Record<string, unknown>;
+    },
+  ) =>
+    request<PipelineEventRow>(`/applications/${applicationId}/events`, {
+      method: "POST",
+      body: JSON.stringify(event),
+    }),
+  timeline: (applicationId: string) =>
+    request<TimelineResponse>(`/applications/${applicationId}/timeline`),
+  agenda: () => request<{ items: AgendaItem[] }>("/pipeline/agenda"),
 };

@@ -309,3 +309,68 @@ export interface ResultDetail {
   models_used: Record<string, string>;
   result: ResultDocument;
 }
+
+// --- hiring pipeline ---
+
+export type PipelineStage =
+  | "new"
+  | "shortlisted"
+  | "contacted"
+  | "interviewing"
+  | "offer"
+  | "hired"
+  | "dropped";
+
+export interface PipelineCard {
+  application_id: string;
+  candidate_name: string | null;
+  candidate_email: string | null;
+  stage: PipelineStage;
+  stage_changed_at: string | null;
+  owner_id: string | null;
+  owner_name: string | null;
+  next_action: string | null;
+  next_action_at: string | null;
+  score: number | null;
+  band: string | null;
+  rank: number | null;
+}
+
+export interface PipelineBoard {
+  job_id: string;
+  job_title: string;
+  stages: PipelineStage[];
+  tray: PipelineCard[];
+  columns: Record<string, PipelineCard[]>;
+  members: { id: string; name: string }[];
+}
+
+export type PipelineEventKind = "stage_change" | "note" | "contact" | "meeting" | "outcome";
+
+export interface PipelineEventRow {
+  id: string;
+  kind: PipelineEventKind;
+  actor_name: string | null;
+  from_stage: string | null;
+  to_stage: string | null;
+  note: string | null;
+  occurs_at: string | null;
+  detail: { result?: "positive" | "negative" } & Record<string, unknown>;
+  created_at: string | null;
+}
+
+export interface TimelineResponse extends PipelineCard {
+  job_id: string;
+  events: PipelineEventRow[];
+}
+
+export interface AgendaItem {
+  application_id: string;
+  job_id: string;
+  job_title: string | null;
+  candidate_name: string | null;
+  stage: PipelineStage;
+  next_action: string | null;
+  next_action_at: string;
+  overdue: boolean;
+}

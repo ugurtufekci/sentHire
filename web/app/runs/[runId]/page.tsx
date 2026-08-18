@@ -146,6 +146,13 @@ export default function RunPage() {
         </div>
       )}
 
+      {results && run?.status === "complete" && results.results.length > 0 && (
+        <div className="notice accent" style={{ marginBottom: 16 }}>
+          Beğendiğiniz adayları görüşme sürecine taşıyın —{" "}
+          <Link href={`/jobs/${run.job_id}/pipeline`}>aday akışını açın</Link>.
+        </div>
+      )}
+
       {results && (
         <>
           <h2 style={{ fontSize: 17, margin: "0 0 12px" }}>

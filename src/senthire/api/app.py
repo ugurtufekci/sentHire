@@ -8,6 +8,7 @@ from senthire.api.routes import (
     candidates,
     health,
     jobs,
+    pipeline,
     requirements,
     runs,
     team,
@@ -36,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(candidates.router, prefix=prefix)
     app.include_router(requirements.router, prefix=prefix)
     app.include_router(runs.router, prefix=prefix)
+    app.include_router(pipeline.router, prefix=prefix)
     return app
 
 

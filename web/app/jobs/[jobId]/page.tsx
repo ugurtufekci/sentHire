@@ -51,7 +51,14 @@ export default function JobPage() {
 
   return (
     <main>
-      <h1 className="page-title">{job?.title ?? "…"}</h1>
+      <div className="hstack" style={{ justifyContent: "space-between" }}>
+        <h1 className="page-title" style={{ marginBottom: 0 }}>
+          {job?.title ?? "…"}
+        </h1>
+        <Link href={`/jobs/${jobId}/pipeline`} className="btn">
+          Aday akışı →
+        </Link>
+      </div>
       <p className="page-sub">
         Üç adım: kriterlerinizi anlatın ve onaylayın, CV&apos;leri yükleyin, taramayı başlatın.
         Kriterleri sonradan değiştirirseniz CV&apos;ler yeniden işlenmez — sadece etkilenen

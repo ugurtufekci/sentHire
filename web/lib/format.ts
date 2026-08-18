@@ -167,3 +167,25 @@ export const STAGE_LABEL: Record<string, string> = {
 export function usd(amount: number): string {
   return `$${amount < 0.01 ? amount.toFixed(4) : amount.toFixed(2)}`;
 }
+
+export const PIPELINE_STAGE_LABEL: Record<string, string> = {
+  new: "Yeni",
+  shortlisted: "Kısa liste",
+  contacted: "Temas kuruldu",
+  interviewing: "Görüşme",
+  offer: "Teklif",
+  hired: "İşe alındı",
+  dropped: "Olumsuz",
+};
+
+export const EVENT_KIND_LABEL: Record<string, string> = {
+  stage_change: "Aşama değişti",
+  note: "Not",
+  contact: "Temas",
+  meeting: "Görüşme",
+  outcome: "Sonuç",
+};
+
+export function scoreText(value: number | null | undefined): string {
+  return value == null ? "—" : `${Math.round(value)}`;
+}

@@ -243,7 +243,45 @@ class Application(Base):
     job_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("jobs.id"), index=True)
     candidate_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("candidates.id"), index=True)
     document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"))
+    # Screening state: received -> profiled -> screened. Set by the pipeline.
     status: Mapped[str] = mapped_column(Text, server_default=text("'received'"))
+    # Hiring state: where this person is in the human process after screening.
+    # Denormalized from pipeline_events (which stay the history of record) so
+    # the board can filter and count without walking every timeline.
+    stage: Mapped[str] = mapped_column(Text, server_default=text("'new'"), index=True)
+    stage_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    # The next thing a human owes this candidate, and when. Drives the
+    # "needs action" and "overdue" views — the questions HR actually asks.
+    next_action: Mapped[str | None] = mapped_column(Text)
+    next_action_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class PipelineEvent(Base):
+    """Append-only history of what a human did with a candidate.
+
+    Every stage move, note, contact, and meeting lands here. The denormalized
+    `applications.stage` is a cache of the latest stage_change; this table is
+    what "why is this candidate here?" is answered from, and it is never edited.
+    """
+
+    __tablename__ = "pipeline_events"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("applications.id"), index=True
+    )
+    # stage_change | note | contact | meeting | outcome
+    kind: Mapped[str] = mapped_column(Text)
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    from_stage: Mapped[str | None] = mapped_column(Text)
+    to_stage: Mapped[str | None] = mapped_column(Text)
+    note: Mapped[str | None] = mapped_column(Text)
+    # When the thing happened or is due (a meeting's start, a call's time).
+    occurs_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    detail: Mapped[dict] = mapped_column(JSONB, server_default=JSONB_EMPTY_OBJ)
     created_at: Mapped[datetime] = created_at_col()
 
 

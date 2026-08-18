@@ -977,3 +977,187 @@ def test_a_broker_outage_surfaces_the_real_cause(client, monkeypatch):
     # admin can retry the compile rather than losing the job
     specs = client.get(f"/api/v1/jobs/{job['id']}/requirements").json()
     assert specs and specs[0]["status"] == "compiling"
+
+
+# --------------------------------------------------------------------------- #
+# 8. Hiring pipeline: what happens to good candidates after the ranking
+# --------------------------------------------------------------------------- #
+
+
+def _screened_job(client, storage_stub, title):
+    """Compact journey: job → spec → CVs → completed run. Returns job_id."""
+    job = client.post("/api/v1/jobs", json={"title": title, "template_slug": None}).json()
+    spec_id = client.post(
+        f"/api/v1/jobs/{job['id']}/requirements/compile",
+        json={"natural_language_text": "En az 3 yıl B2B satış deneyimi olsun."},
+    ).json()["spec_id"]
+    client.post(f"/api/v1/requirements/{spec_id}/confirm", json={})
+    slots = client.post(
+        f"/api/v1/jobs/{job['id']}/uploads",
+        json={"files": [{"filename": f"cv{i}.pdf"} for i in range(len(CANDIDATES))]},
+    ).json()["uploads"]
+    for slot, candidate in zip(slots, CANDIDATES, strict=True):
+        # distinct bytes per job — identical bytes are deduplicated org-wide
+        storage_stub[slot["s3_key"]] = make_pdf(f"CV {candidate[1]} {title}")
+    client.post(
+        f"/api/v1/jobs/{job['id']}/uploads/complete",
+        json={"files": [{"s3_key": s["s3_key"], "filename": s["filename"]} for s in slots]},
+    )
+    run = client.post(f"/api/v1/jobs/{job['id']}/runs", json={"mode": "interactive"})
+    assert run.status_code in {200, 202}, run.text
+    return job["id"]
+
+
+def test_pipeline_tray_shortlist_and_drag_moves(client, storage_stub, fake_models):
+    job_id = _screened_job(client, storage_stub, "Pipeline Testi A")
+
+    # --- the tray shows gate-passers, best first; columns start empty -------
+    board = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()
+    assert board["stages"][0] == "shortlisted"
+    tray = board["tray"]
+    assert [c["candidate_name"] for c in tray] == ["Deniz Yılmaz", "Ece Kaya"], tray
+    assert tray[0]["score"] >= tray[1]["score"]
+    assert all(not cards for cards in board["columns"].values()), board["columns"]
+    assert "Kerem Aydın" not in [c["candidate_name"] for c in tray], (
+        "hard-gate rejects are not board material"
+    )
+
+    # --- bulk shortlist is idempotent per candidate -------------------------
+    ids = [c["application_id"] for c in tray]
+    first = client.post(
+        f"/api/v1/jobs/{job_id}/pipeline/shortlist", json={"application_ids": ids}
+    ).json()
+    assert first == {"moved": 2, "skipped": 0}
+    again = client.post(
+        f"/api/v1/jobs/{job_id}/pipeline/shortlist", json={"application_ids": ids}
+    ).json()
+    assert again == {"moved": 0, "skipped": 2}, "a human's placement is never overwritten"
+
+    board = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()
+    assert board["tray"] == []
+    assert len(board["columns"]["shortlisted"]) == 2
+
+    # --- a drag writes the denormalized stage and an event ------------------
+    moved = client.patch(
+        f"/api/v1/applications/{ids[0]}/stage",
+        json={"stage": "contacted", "note": "LinkedIn üzerinden yazıldı"},
+    )
+    assert moved.status_code == 200, moved.text
+    assert moved.json()["stage"] == "contacted"
+    assert moved.json()["stage_changed_at"] is not None
+
+    timeline = client.get(f"/api/v1/applications/{ids[0]}/timeline").json()
+    changes = [e for e in timeline["events"] if e["kind"] == "stage_change"]
+    assert [(e["from_stage"], e["to_stage"]) for e in changes] == [
+        ("shortlisted", "contacted"),
+        ("new", "shortlisted"),
+    ], changes
+    assert changes[0]["note"] == "LinkedIn üzerinden yazıldı"
+    assert changes[0]["actor_name"] == "Ayşe Demir"
+
+    # --- dropping to the same column is a no-op, not a duplicate event ------
+    client.patch(f"/api/v1/applications/{ids[0]}/stage", json={"stage": "contacted"})
+    timeline = client.get(f"/api/v1/applications/{ids[0]}/timeline").json()
+    assert len([e for e in timeline["events"] if e["kind"] == "stage_change"]) == 2
+
+    # --- made-up stages are rejected, not stored ----------------------------
+    bad = client.patch(f"/api/v1/applications/{ids[0]}/stage", json={"stage": "yolladik"})
+    assert bad.status_code == 422
+
+
+def test_pipeline_notes_meetings_and_agenda(client, storage_stub, fake_models):
+    job_id = _screened_job(client, storage_stub, "Pipeline Testi B")
+    tray = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()["tray"]
+    app_id = tray[0]["application_id"]
+    me = client.get("/api/v1/auth/me").json()["user"]
+
+    # --- owner and a manual next action -------------------------------------
+    patched = client.patch(
+        f"/api/v1/applications/{app_id}",
+        json={
+            "owner_id": me["id"],
+            "next_action": "Referans kontrolü",
+            "next_action_at": "2026-01-05T09:00:00+00:00",  # already past → overdue
+        },
+    ).json()
+    assert patched["owner_name"] == "Ayşe Demir"
+    assert patched["next_action"] == "Referans kontrolü"
+
+    agenda = client.get("/api/v1/pipeline/agenda").json()["items"]
+    mine = [i for i in agenda if i["application_id"] == app_id]
+    assert mine and mine[0]["overdue"] is True
+    assert mine[0]["job_title"] == "Pipeline Testi B"
+
+    # --- a scheduled meeting becomes the next action automatically ----------
+    event = client.post(
+        f"/api/v1/applications/{app_id}/events",
+        json={
+            "kind": "meeting",
+            "note": "Teknik mülakat",
+            "occurs_at": "2027-03-01T10:00:00+00:00",
+        },
+    )
+    assert event.status_code == 201, event.text
+    card = client.get(f"/api/v1/applications/{app_id}/timeline").json()
+    assert card["next_action"] == "Teknik mülakat"
+    assert card["next_action_at"].startswith("2027-03-01")
+    agenda = client.get("/api/v1/pipeline/agenda").json()["items"]
+    mine = [i for i in agenda if i["application_id"] == app_id]
+    assert mine[0]["overdue"] is False
+
+    # --- contacts carry their outcome; unknown kinds are refused ------------
+    ok = client.post(
+        f"/api/v1/applications/{app_id}/events",
+        json={"kind": "contact", "note": "Telefonla ulaşıldı", "detail": {"result": "positive"}},
+    )
+    assert ok.status_code == 201
+    assert ok.json()["detail"] == {"result": "positive"}
+    assert (
+        client.post(
+            f"/api/v1/applications/{app_id}/events", json={"kind": "telepathy"}
+        ).status_code
+        == 422
+    )
+
+    # --- clearing the reminder removes it from the agenda -------------------
+    client.patch(
+        f"/api/v1/applications/{app_id}",
+        json={"next_action": None, "next_action_at": None},
+    )
+    agenda = client.get("/api/v1/pipeline/agenda").json()["items"]
+    assert not [i for i in agenda if i["application_id"] == app_id]
+
+
+def test_pipeline_is_tenant_isolated(client, new_client, storage_stub, fake_models):
+    job_id = _screened_job(client, storage_stub, "Pipeline Testi C")
+    app_id = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()["tray"][0]["application_id"]
+
+    outsider = new_client()
+    outsider.post(
+        "/api/v1/auth/signup",
+        json={
+            "company_name": "Rakip İK",
+            "name": "Veli Kaya",
+            "email": "veli@rakip-ik.com",
+            "password": "guclu-parola-456",
+        },
+    )
+    assert outsider.get(f"/api/v1/jobs/{job_id}/pipeline").status_code == 404
+    assert (
+        outsider.patch(
+            f"/api/v1/applications/{app_id}/stage", json={"stage": "hired"}
+        ).status_code
+        == 404
+    )
+    assert outsider.get(f"/api/v1/applications/{app_id}/timeline").status_code == 404
+    assert (
+        outsider.post(
+            f"/api/v1/jobs/{job_id}/pipeline/shortlist", json={"application_ids": [app_id]}
+        ).status_code
+        == 404
+    )
+    assert outsider.get("/api/v1/pipeline/agenda").json()["items"] == []
+
+    # and nothing the outsider tried moved the candidate
+    board = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()
+    assert board["tray"][0]["application_id"] == app_id
