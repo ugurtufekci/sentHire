@@ -29,6 +29,7 @@ erDiagram
     APPLICATION ||--o{ EVALUATION : "one per (run)"
     EVALUATION ||--o{ REQUIREMENT_RESULT : contains
     APPLICATION ||--o{ OVERRIDE : "human decisions"
+    APPLICATION ||--o{ PIPELINE_EVENT : "hiring timeline"
     ORGANIZATION ||--o{ AUDIT_LOG : records
 ```
 
@@ -43,13 +44,22 @@ create table organizations (
   created_at timestamptz not null default now()
 );
 
-create table users (
+create table users (                      -- login accounts (shipped roles: admin|member)
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references organizations(id),
   email citext not null unique,
-  role text not null check (role in ('owner','recruiter','viewer')),
+  name text,
+  role text not null check (role in ('admin','member')),
+  password_hash text,                     -- argon2id; null until invitation accepted
+  is_active boolean not null default true,
+  last_login_at timestamptz,
   created_at timestamptz not null default now()
 );
+-- Companion account tables (migrations 0002–0004): auth_sessions (cookie sessions,
+-- sha256 of the token only), invitations (hash-only 7-day links; a partial unique
+-- index allows at most one open invitation per address per org), password_resets
+-- (single-use, 60-min TTL), subscriptions (one per org: plan/status/period) and
+-- usage_counters (org × 'YYYY-MM' → CVs metered; the month key is the free reset).
 
 create table job_templates (              -- curated library: "Sales Specialist", ...
   id uuid primary key,
@@ -128,10 +138,31 @@ create table applications (               -- candidate ⇄ job
   job_id uuid not null references jobs(id),
   candidate_id uuid not null references candidates(id),
   document_id uuid not null references documents(id),
-  status text not null default 'received'
-      check (status in ('received','profiled','screened','shortlisted','rejected','withdrawn')),
+  status text not null default 'received'   -- screening state, set by the pipeline
+      check (status in ('received','profiled','screened')),
+  -- Hiring state (the human process after screening; docs 10 §10). `stage` is a
+  -- denormalized cache of the latest pipeline_events stage_change.
+  stage text not null default 'new'
+      check (stage in ('new','shortlisted','contacted','interviewing','offer','hired','dropped')),
+  stage_changed_at timestamptz,
+  owner_id uuid references users(id),       -- teammate responsible for this candidate
+  next_action text,                         -- what is owed to the candidate...
+  next_action_at timestamptz,               -- ...and when (drives the agenda view)
   created_at timestamptz not null default now(),
   unique (job_id, candidate_id)
+);
+
+create table pipeline_events (            -- append-only; never edited (audit + timeline)
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null,
+  application_id uuid not null references applications(id),
+  kind text not null,                     -- stage_change | note | contact | meeting | outcome
+  actor_id uuid references users(id),
+  from_stage text, to_stage text,         -- stage_change only
+  note text,
+  occurs_at timestamptz,                  -- when the meeting/contact happens (vs created_at)
+  detail jsonb not null default '{}',     -- e.g. {"result": "positive"|"negative"}
+  created_at timestamptz not null default now()
 );
 
 create table screening_runs (

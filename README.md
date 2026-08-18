@@ -82,6 +82,7 @@ is reproducible, auditable and explainable.
 | [09 — Fairness & compliance](docs/09-fairness-and-compliance.md) | Bias mitigation, GDPR/KVKK, audit, human oversight, prompt-injection defense |
 | [10 — Product UX](docs/10-product-ux.md) | HR user experience: templates, NL requirements, results, overrides, re-runs |
 | [11 — MVP & scaling](docs/11-mvp-and-scaling.md) | Recommended MVP cut, path to 100k+ candidates, risk register |
+| [12 — Differentiation](docs/12-differentiation.md) | Why this beats pasting CVs into a chatbot, and the plan to keep it that way |
 
 ## Design tenets
 

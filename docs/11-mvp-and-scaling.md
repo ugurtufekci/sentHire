@@ -17,8 +17,29 @@ product; cutting stages to "ship faster" would ship a different (worse) product.
 | SaaS | Self-serve signup, orgs/roles, per-org metering + budgets | SSO/SAML, billing automation, plan tiers |
 | Compliance | Schema-as-allowlist, compliance lint, erasure endpoint, audit log, DPA template | Formal AI-Act documentation pack, residency options |
 
-Explicit non-goals for MVP: ATS integrations, e-mail outreach, interview scheduling,
-multi-position talent pools — adjacent products, not the wedge.
+Explicit non-goals for MVP: ATS integrations, multi-position talent pools —
+adjacent products, not the wedge. (Candidate e-mail outreach graduated from this
+list to the near-term roadmap: the hiring pipeline now records who should get an
+interview invitation, and the transactional-mail infrastructure already exists.)
+
+## 1a. Implementation status (as of 2026-08)
+
+Shipped and covered by the test suite (120 tests incl. end-to-end journeys,
+migration round-trips, golden-set gate, browser smoke):
+
+- [x] Funnel Stages 0–6 with memoization, spec versioning, evidence verification
+- [x] Requirement compiler + confirm flow (back-translation, clarifying questions)
+- [x] Workspace auth: signup, cookie sessions, invitations, password reset,
+      admin/member roles, seat limits, last-admin protection
+- [x] Transactional e-mail (console/SMTP backends, Celery `mail` queue)
+- [x] Billing: CV-volume plans, monthly metering at intake (dedup is free),
+      402 quota gate, iyzico subscription checkout (mock provider in dev)
+- [x] Batch economy mode: Message Batches transport for Stages 4–5 at 50% token
+      price, self-re-enqueueing pollers, per-run cost + savings rollup
+- [x] Golden-set harness (offline CI mode + live grading vs answer key)
+- [x] Hiring pipeline: drag-and-drop board, bulk shortlist, timeline, agenda
+- [ ] SSE progress stream (UI polls today; contract unchanged)
+- [ ] Embedding prefilter (doc 05 §3), managed OCR path, SSO — as planned below
 
 ## 2. Quality & evaluation harness (build in week 1, not at the end)
 

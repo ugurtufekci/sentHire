@@ -58,7 +58,7 @@ flowchart LR
 | Component | Responsibility | Technology |
 |---|---|---|
 | **Web app** | Job creation, template editing, NL requirement input, CV upload, live progress, ranked results, evidence viewer, overrides, comparisons | Next.js/React |
-| **API service** | REST API, authn/z, tenancy enforcement, upload handling (presigned S3 URLs), run orchestration, SSE progress streams | FastAPI (async) |
+| **API service** | REST API, authn/z, tenancy enforcement, upload handling (presigned S3 URLs), run orchestration, progress polling (SSE planned) | FastAPI (async) |
 | **Requirement compiler** | Template + NL instructions → versioned Evaluation Spec (LLM-assisted, HR-confirmed) | Library called by API; Sonnet 5 |
 | **Parse workers** | PDF → structured Candidate Profile (Stage 1); dedup by file hash; derived-field computation | Celery queue `parse` |
 | **Screen workers** | Deterministic filter, lightweight screening, deep analysis, scoring (Stages 3–6) | Celery queue `screen` |
@@ -93,16 +93,37 @@ Everything is scoped to an `organization`:
   cannot starve another tenant ([doc 08 §1](08-batch-processing-and-caching.md)).
 - Candidate identity and profile caching are **org-scoped**: the "same candidate
   applied to 5 jobs → parse once" optimization never crosses tenant boundaries.
-- Self-serve signup: email + org creation → invite teammates (roles: `owner`,
-  `recruiter`, `viewer`). SSO (SAML/OIDC) is a post-MVP enterprise feature.
+- Self-serve signup: company + admin account in one step → invite teammates by
+  email. Shipped roles are `admin` (billing, team, settings) and `member`
+  (everything else); finer-grained roles (e.g. read-only viewer) and SSO
+  (SAML/OIDC) are post-MVP enterprise features.
 - Deletion is tenant-complete: dropping an org cascades DB rows, vectors, S3 objects,
   and queued work ([doc 09](09-fairness-and-compliance.md) for KVKK/GDPR erasure).
 
 ## 3. API surface (backend architecture example)
 
-All endpoints are under `/api/v1`, JSON, org-scoped by the authenticated session.
+All endpoints are under `/api/v1`, JSON, org-scoped by the authenticated session
+(HttpOnly cookie; only a SHA-256 of the token is stored server-side).
 
 ```text
+# Auth & workspace
+POST   /auth/signup                        → create org + admin, start session
+POST   /auth/login  /auth/logout           → session lifecycle
+GET    /auth/me                            → current user + org
+POST   /auth/forgot-password               → enumeration-safe reset email
+GET/POST /auth/password-resets/{token}     → single-use reset (60 min TTL)
+GET    /org  /org/members                  → workspace info, member list
+POST   /org/invitations                    → invite by email (7-day link, admin only)
+POST   /org/invitations/{id}/resend        → rotate token; DELETE revokes
+GET/POST /auth/invitations/{token}[/accept]→ invitee joins the workspace
+PATCH  /org/members/{user_id}              → role / deactivate (last admin protected)
+
+# Billing (CV-volume plans, iyzico)
+GET    /billing                            → plan, monthly usage, quota
+PUT    /billing/details                    → invoice details
+POST   /billing/checkout                   → iyzico subscription checkout form
+POST   /billing/cancel                     → cancel at period end
+
 # Jobs & templates
 GET    /templates                          → predefined role templates (Sales Specialist, ...)
 POST   /jobs                               → create job (title, template_id?, description)
@@ -123,7 +144,8 @@ GET    /jobs/{job_id}/candidates           → intake status per file (parsed/fa
 # Screening runs
 POST   /jobs/{job_id}/runs                 → start screening {spec_version, mode: interactive|batch}
 GET    /runs/{run_id}                      → status + funnel counters
-GET    /runs/{run_id}/events               → SSE stream: progress, per-stage counts
+GET    /runs/{run_id}/events               → SSE stream (planned; today the UI polls
+                                             GET /runs/{run_id}, which is cheap)
 POST   /runs/{run_id}/cancel
 
 # Results & explainability
@@ -132,6 +154,15 @@ GET    /runs/{run_id}/results/{app_id}     → full breakdown: per-requirement v
                                              evidence quotes with document spans, confidence,
                                              strengths/weaknesses, missing info
 GET    /applications/{app_id}/document     → presigned view of original CV (+highlight anchors)
+
+# Hiring pipeline (after the ranking; doc 10 §9)
+GET    /jobs/{job_id}/pipeline             → board: tray of screened candidates + columns
+POST   /jobs/{job_id}/pipeline/shortlist   → bulk move tray → shortlisted (idempotent)
+PATCH  /applications/{app_id}/stage        → move a card; appends a pipeline event
+PATCH  /applications/{app_id}              → owner, next action (+due date)
+POST   /applications/{app_id}/events       → note | contact | meeting | outcome
+GET    /applications/{app_id}/timeline     → the candidate's full event history
+GET    /pipeline/agenda                    → org-wide upcoming/overdue next actions
 
 # Human control
 POST   /runs/{run_id}/results/{app_id}/override   → {decision, reason}  (audited)
@@ -178,8 +209,9 @@ Example — `GET /runs/{run_id}/results` (truncated):
 3. Enqueues one `screen.application` task per application **that lacks a memoized
    evaluation** for (profile_version, spec_version, pipeline_version); already-evaluated
    pairs are copied forward instantly (re-run cheapness comes from here).
-4. Workers execute Stages 3→6 per candidate; every state transition increments Redis
-   counters; the UI subscribes to `/runs/{id}/events` SSE.
+4. Workers execute Stages 3→6 per candidate; every state transition updates the
+   run's funnel counters; the UI polls `GET /runs/{id}` (SSE is a planned upgrade,
+   the polling contract stays).
 5. When all applications reach a terminal state, the run flips to `complete`; ranking
    is computed by the deterministic scorer and stored.
 

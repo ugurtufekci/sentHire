@@ -9,8 +9,8 @@ No installation, no IT project. The UX principle:
 
 ## 1. Onboarding (first 10 minutes)
 
-1. Sign up with work email → create organization → invite teammates (owner/recruiter/
-   viewer roles).
+1. Sign up with work email → company workspace + admin account in one step →
+   invite teammates by email (roles: admin / member).
 2. Guided first job: pick a template, paste requirements, drag in a folder of CVs.
 3. First ranked list within minutes — the product sells itself on run #1.
 
@@ -103,7 +103,27 @@ Side-by-side matrix (2–5 candidates × requirements) with verdict icons and pe
 evidence popovers; export of the shortlist + per-candidate reports (PDF) for hiring
 managers — export events are audited.
 
-## 9. Trust affordances (cross-cutting)
+## 9. Hiring pipeline: from ranking to hire (shipped)
+
+Screening ends with a ranked list; the hiring work continues for weeks. The board
+(`/jobs/{id}/pipeline`, "Aday akışı") keeps that work inside the product:
+
+- **Tray**: candidates who passed the gates, best score first, with quick-select
+  shortcuts ("80+ puan", "60+ puan", "İlk 10", all) and one-click bulk move to the
+  shortlist. Individual candidates can also be dragged straight into any column.
+- **Kanban columns**: Kısa liste → Temas kuruldu → Görüşme → Teklif → İşe alındı /
+  Olumsuz. Cards move by native drag & drop; a stage select in the drawer covers
+  keyboards and phones. Every move appends to the candidate's immutable timeline —
+  the board answers "where is everyone?", the timeline answers "why?".
+- **Candidate drawer**: score + band, owner assignment, quick forms for notes,
+  scheduled meetings (a meeting automatically becomes the candidate's next action)
+  and contacts with a positive/negative outcome, plus the full event history.
+- **Agenda**: the home page lists upcoming and overdue next actions across all jobs
+  ("Yaklaşan adımlar"), so nothing owed to a candidate silently expires.
+- Planned next: automatic interview e-mails to candidates marked positive (the
+  mail infrastructure from invitations/password resets is already in place).
+
+## 10. Trust affordances (cross-cutting)
 
 - Confidence is always visible, in words (Yüksek/Orta/Düşük), not decimals.
 - AI-authored text is labeled; quotes from the CV are visually distinct.
