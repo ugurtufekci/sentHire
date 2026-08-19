@@ -88,6 +88,7 @@ def _validate(case: GoldenCase, case_dir: Path) -> None:
         ("expected_top", case.expectations.expected_top),
         ("expected_order_pairs", [g for pair in case.expectations.expected_order_pairs for g in pair]),
         ("fairness_pairs", [g for pair in case.expectations.fairness_pairs for g in pair]),
+        ("monotonic_pairs", [g for pair in case.expectations.monotonic_pairs for g in pair]),
     ):
         unknown_ids = set(listed) - known
         if unknown_ids:

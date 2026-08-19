@@ -11,3 +11,9 @@ build/
 .DS_Store
 node_modules/
 .next/
+
+# Evaluation corpus: de-identified pools are meant to be committed, the raw
+# material that produced them never is.
+*.pdf
+corpus/**/raw/
+corpus/**/*.salt

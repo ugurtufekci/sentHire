@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     light_screen_model: str = "claude-haiku-4-5"
     deep_analysis_model: str = "claude-sonnet-5"
     compiler_model: str = "claude-sonnet-5"
+    # Offline labeling oracle (senthire.evals.autolabel). Never on the request
+    # path, so it is free to be slower and stronger than the screening tiers.
+    label_oracle_model: str = "claude-sonnet-5"
     # ANTHROPIC_API_KEY is read from the environment by the Anthropic SDK itself.
 
     # --- intake limits (docs/02 Stage 0) ---

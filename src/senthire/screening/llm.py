@@ -40,7 +40,10 @@ def _profile_block(profile: dict) -> str:
     return json.dumps(profile, ensure_ascii=False, sort_keys=True)
 
 
-def _call(model: str, system: str, content: list[dict], output_format, max_tokens: int):
+def call_model(model: str, system: str, content: list[dict], output_format, max_tokens: int):
+    """One transport for every structured model call: production screening and
+    the offline labeling oracle alike, so retries and usage accounting cannot
+    drift between them."""
     try:
         response = anthropic.Anthropic().messages.parse(
             model=model,
@@ -103,7 +106,7 @@ def deep_content(
 
 def light_screen(spec: EvaluationSpec, profile: dict) -> tuple[LightScreenOutput, LlmUsage]:
     settings = get_settings()
-    return _call(
+    return call_model(
         settings.light_screen_model,
         prompts.LIGHT_SYSTEM,
         light_content(spec, profile),
@@ -119,7 +122,7 @@ def deep_analyze(
     light_judgments: list[dict],
 ) -> tuple[DeepAnalysisOutput, LlmUsage]:
     settings = get_settings()
-    return _call(
+    return call_model(
         settings.deep_analysis_model,
         prompts.DEEP_SYSTEM,
         deep_content(spec, profile, raw_text, light_judgments),

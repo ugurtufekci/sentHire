@@ -63,3 +63,9 @@ class CaseExpectations(_Strict):
     expected_order_pairs: list[tuple[str, str]] = []
     # [a, b] — must produce identical final scores and bands
     fairness_pairs: list[tuple[str, str]] = []
+    # [higher_or_equal, lower_or_equal] — a *weak* ordering, unlike
+    # expected_order_pairs. Generated from invariant twins (one more year of
+    # experience may never lower a score; a weaker language level may never
+    # raise one), so the assertion holds by construction rather than by
+    # anyone's judgment.
+    monotonic_pairs: list[tuple[str, str]] = []

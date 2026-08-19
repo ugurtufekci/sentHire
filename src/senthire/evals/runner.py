@@ -13,9 +13,8 @@ instead of demanding exactness.
 
 from dataclasses import dataclass, field
 
-from senthire.domain.derived import compute_derived
-from senthire.domain.profile import ExtractedProfile, compose_profile_document
 from senthire.domain.scoring import RequirementVerdict, ScoreResult, score
+from senthire.evals.document import profile_document
 from senthire.evals.loader import GoldenCase
 from senthire.evals.schema import GoldenCandidate
 from senthire.screening.assemble import judgments_to_verdicts, merge_verdicts
@@ -62,32 +61,59 @@ def _labeled_semantic_verdicts(cand: GoldenCandidate) -> dict[str, RequirementVe
     }
 
 
-def evaluate_candidate(case: GoldenCase, cand: GoldenCandidate) -> CandidateOutcome:
-    extracted = ExtractedProfile.model_validate(cand.profile)
-    derived = compute_derived(extracted, today=case.expectations.as_of)
-    profile_doc = compose_profile_document(
-        extracted, derived, model="golden", prompt_version="golden", path="golden",
-        confidence=1.0,
+@dataclass
+class PipelineOutcome:
+    """What the deterministic half of the pipeline says about one profile."""
+
+    gate: str
+    knockouts: list[str]
+    borderline: bool
+    result: ScoreResult
+    deterministic: dict[str, RequirementVerdict]
+    merged: dict[str, RequirementVerdict]
+
+
+def evaluate_profile(
+    spec, profile: dict, semantic: dict[str, RequirementVerdict], as_of
+) -> PipelineOutcome:
+    """Run Stages 3 and 6 for real over a profile and a set of semantic verdicts.
+
+    Shared by the golden runner and the corpus promoter so a promoted
+    expectation and the assertion that later checks it are computed by exactly
+    the same code path.
+    """
+    det = run_deterministic_stage(spec, profile_document(profile, as_of))
+    merged = merge_verdicts(spec, det.verdicts, light=semantic)
+    result = score(spec, merged)
+    return PipelineOutcome(
+        gate="fail" if det.knocked_out or result.gate.status == "fail" else "pass",
+        knockouts=sorted(set(det.knockout_reasons) | set(result.gate.failed)),
+        borderline=det.borderline,
+        result=result,
+        deterministic=det.verdicts,
+        merged=merged,
     )
 
-    det = run_deterministic_stage(case.spec, profile_doc)
-    merged = merge_verdicts(case.spec, det.verdicts, light=_labeled_semantic_verdicts(cand))
-    result = score(case.spec, merged)
 
-    gate = "fail" if det.knocked_out or result.gate.status == "fail" else "pass"
-    knockouts = sorted(set(det.knockout_reasons) | set(result.gate.failed))
+def evaluate_candidate(case: GoldenCase, cand: GoldenCandidate) -> CandidateOutcome:
+    outcome_data = evaluate_profile(
+        case.spec, cand.profile, _labeled_semantic_verdicts(cand), case.expectations.as_of
+    )
+    det_verdicts, merged, result = (
+        outcome_data.deterministic, outcome_data.merged, outcome_data.result
+    )
     outcome = CandidateOutcome(
         golden_id=cand.golden_id,
-        gate=gate,
-        borderline=det.borderline,
-        knockout_reqs=knockouts,
+        gate=outcome_data.gate,
+        borderline=outcome_data.borderline,
+        knockout_reqs=outcome_data.knockouts,
         result=result,
     )
 
     labels = cand.labels
     m = outcome.mismatches
     for req_id, expected in labels.expected_deterministic.items():
-        got = det.verdicts.get(req_id)
+        got = det_verdicts.get(req_id)
         if got is None or got.verdict != expected:
             m.append(
                 f"{req_id} (deterministic): expected {expected}, "
@@ -100,12 +126,19 @@ def evaluate_candidate(case: GoldenCase, cand: GoldenCandidate) -> CandidateOutc
                 f"{req_id} (merged): expected {expected}, "
                 f"got {got.verdict if got else 'absent'}"
             )
-    if gate != labels.gate:
-        m.append(f"gate: expected {labels.gate}, got {gate}")
-    if labels.gate == "fail" and labels.knockout_reqs and set(labels.knockout_reqs) != set(knockouts):
-        m.append(f"knockout_reqs: expected {sorted(labels.knockout_reqs)}, got {knockouts}")
-    if det.borderline != labels.borderline:
-        m.append(f"borderline: expected {labels.borderline}, got {det.borderline}")
+    if outcome.gate != labels.gate:
+        m.append(f"gate: expected {labels.gate}, got {outcome.gate}")
+    if (
+        labels.gate == "fail"
+        and labels.knockout_reqs
+        and set(labels.knockout_reqs) != set(outcome.knockout_reqs)
+    ):
+        m.append(
+            f"knockout_reqs: expected {sorted(labels.knockout_reqs)}, "
+            f"got {outcome.knockout_reqs}"
+        )
+    if outcome.borderline != labels.borderline:
+        m.append(f"borderline: expected {labels.borderline}, got {outcome.borderline}")
     if labels.band is not None and result.band != labels.band:
         m.append(f"band: expected {labels.band}, got {result.band}")
     if labels.score_range is not None:
@@ -146,6 +179,15 @@ def run_case(case: GoldenCase) -> CaseReport:
                 m.append(f"order: expected {higher} above {lower}")
         else:
             m.append(f"order: {higher} vs {lower} — one of them did not pass the gate")
+    for higher, lower in exp.monotonic_pairs:
+        # Both sides are scored even when gated out: an invariant about the
+        # score must not be silently skipped because the gate happened first.
+        hi, lo = by_id[higher].result, by_id[lower].result
+        if hi.final_score < lo.final_score:
+            m.append(
+                f"monotonicity: {higher} ({hi.final_score}) scored below "
+                f"{lower} ({lo.final_score})"
+            )
     for a, b in exp.fairness_pairs:
         ra, rb = by_id[a].result, by_id[b].result
         if ra.final_score != rb.final_score or ra.band != rb.band:
@@ -191,12 +233,7 @@ def run_case_live(case: GoldenCase) -> LiveCaseReport:
 
     report = LiveCaseReport(case.name)
     for cand in case.candidates:
-        extracted = ExtractedProfile.model_validate(cand.profile)
-        derived = compute_derived(extracted, today=case.expectations.as_of)
-        profile_doc = compose_profile_document(
-            extracted, derived, model="golden", prompt_version="golden", path="golden",
-            confidence=1.0,
-        )
+        profile_doc = profile_document(cand.profile, case.expectations.as_of)
         try:
             output, usage = light_screen(case.spec, profile_doc)
         except Exception as exc:  # transient/API errors fail the row, not the run

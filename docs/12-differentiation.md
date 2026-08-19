@@ -71,7 +71,10 @@ in that order.
 1. **Turkish HR ground truth at scale.** Grow the golden set per vertical
    (sales, logistics, software, finance…): labeled CVs, expected decisions,
    fairness twins. Every labeled case is a permanent quality ratchet a generic
-   tool cannot copy. Target: hundreds of cases per template we ship.
+   tool cannot copy. Target: hundreds of cases per template we ship. The
+   labeling is mostly automatic — invariant twins and deterministic rules
+   carry it, an oracle ensemble judges the rest, and only genuine
+   disagreements reach a person ([doc 13](13-corpus-and-labeling.md)).
 2. **Turkish normalization layer.** Canonical titles, universities, sectors,
    city/district geography, military-service and CEFR conventions, TR-specific
    CV idioms — maintained as data with tests, feeding both predicates and
