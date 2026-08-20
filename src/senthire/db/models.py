@@ -357,7 +357,14 @@ class Override(Base):
     application_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("applications.id"), index=True)
     run_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("screening_runs.id"))
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
-    action: Mapped[str] = mapped_column(Text)  # promote | reject | restore | note
+    action: Mapped[str] = mapped_column(Text)  # correct | note
+    # Which requirement the human corrected, and how. Candidate-level decisions
+    # (shortlist, reject) live in the hiring pipeline; this table is about
+    # disagreeing with a *verdict*, which is also the most valuable label the
+    # product ever sees (docs/12 §3).
+    req_id: Mapped[str | None] = mapped_column(Text)
+    from_verdict: Mapped[str | None] = mapped_column(Text)
+    to_verdict: Mapped[str | None] = mapped_column(Text)
     reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at_col()
 

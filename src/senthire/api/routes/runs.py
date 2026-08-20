@@ -4,11 +4,11 @@ import uuid
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from senthire.api.deps import get_db, get_org, parse_uuid
+from senthire.api.deps import get_current_user, get_db, get_org, parse_uuid
 from senthire.api.enqueue import enqueue_after_commit
 from senthire.db.models import (
     Application,
@@ -18,9 +18,19 @@ from senthire.db.models import (
     Job,
     Organization,
     ScreeningRun,
+    User,
 )
+from senthire.domain.spec import EvaluationSpec
+from senthire.services import overrides as override_service
 
 router = APIRouter(tags=["runs"])
+
+
+class VerdictCorrection(BaseModel):
+    """HR disagreeing with one requirement's verdict."""
+
+    verdict: Literal["met", "partially_met", "not_met", "unknown"]
+    reason: str | None = Field(default=None, max_length=1000)
 
 
 class RunCreate(BaseModel):
@@ -231,3 +241,46 @@ def run_result_detail(
         "models_used": ev.models_used,
         "result": ev.result,
     }
+
+
+def _evaluation(run: ScreeningRun, application_id: str, session: Session) -> Evaluation:
+    evaluation = session.scalar(
+        select(Evaluation).where(
+            Evaluation.run_id == run.id,
+            Evaluation.application_id == parse_uuid(application_id, "application_id"),
+        )
+    )
+    if evaluation is None:
+        raise HTTPException(status_code=404, detail="evaluation not found")
+    return evaluation
+
+
+@router.post("/runs/{run_id}/results/{application_id}/requirements/{req_id}/override")
+def override_verdict(
+    run_id: str,
+    application_id: str,
+    req_id: str,
+    payload: VerdictCorrection,
+    user: User = Depends(get_current_user),
+    org: Organization = Depends(get_org),
+    session: Session = Depends(get_db),
+) -> dict:
+    """Correct one verdict. The score, gate and ranking follow deterministically."""
+    run = _get_run(run_id, org, session)
+    evaluation = _evaluation(run, application_id, session)
+    spec_row = session.get(EvaluationSpecRow, run.spec_id)
+    spec = EvaluationSpec.model_validate(spec_row.spec)
+    try:
+        override_service.correct_verdict(
+            session,
+            evaluation=evaluation,
+            spec=spec,
+            req_id=req_id,
+            verdict=payload.verdict,
+            reason=payload.reason,
+            user=user,
+        )
+    except override_service.OverrideError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    session.commit()
+    return run_result_detail(run_id, application_id, org, session)

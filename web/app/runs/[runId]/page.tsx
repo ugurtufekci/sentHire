@@ -254,6 +254,7 @@ export default function RunPage() {
           applicationId={open.application_id}
           candidateName={open.candidate.display_name}
           onClose={() => setOpen(null)}
+          onCorrected={() => api.runResults(runId).then(setResults).catch(() => {})}
         />
       )}
     </main>

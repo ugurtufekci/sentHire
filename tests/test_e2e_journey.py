@@ -1161,3 +1161,116 @@ def test_pipeline_is_tenant_isolated(client, new_client, storage_stub, fake_mode
     # and nothing the outsider tried moved the candidate
     board = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()
     assert board["tray"][0]["application_id"] == app_id
+
+
+# --------------------------------------------------------------------------- #
+# 9. Overrides: a human disagreeing with a verdict
+# --------------------------------------------------------------------------- #
+
+
+def _latest_run(client, job_id: str) -> str:
+    runs = client.get(f"/api/v1/jobs/{job_id}/runs").json()
+    return runs[0]["run_id"]
+
+
+def test_correcting_a_verdict_rescores_regates_and_reranks(client, storage_stub, fake_models):
+    job_id = _screened_job(client, storage_stub, "Override Testi A")
+    run_id = _latest_run(client, job_id)
+    results = client.get(f"/api/v1/runs/{run_id}/results").json()
+
+    # Kerem is rejected by the 3-year floor — 18 months of experience.
+    rejected = next(r for r in results["rejected"] if r["candidate"]["display_name"] == "Kerem Aydın")
+    application_id = rejected["application_id"]
+    ranked_before = [r["candidate"]["display_name"] for r in results["results"]]
+    assert "Kerem Aydın" not in ranked_before
+
+    corrected = client.post(
+        f"/api/v1/runs/{run_id}/results/{application_id}"
+        "/requirements/R1_experience/override",
+        json={"verdict": "met", "reason": "CV'de yazmayan 2 yıllık serbest çalışma teyit edildi"},
+    )
+    assert corrected.status_code == 200, corrected.text
+    body = corrected.json()
+
+    # the gate reopens, and the score is the scorer's, not a hand-set number
+    assert body["hard_result"] == "pass"
+    assert body["rank"] is not None
+    row = next(r for r in body["result"]["requirements"] if r["req_id"] == "R1_experience")
+    assert (row["verdict"], row["source_stage"]) == ("met", "human")
+
+    # the correction is on the record, with both verdicts and the reason
+    logged = body["result"]["human_overrides"]
+    assert logged[0]["req_id"] == "R1_experience"
+    assert (logged[0]["from"], logged[0]["to"]) == ("not_met", "met")
+    assert "serbest çalışma" in logged[0]["reason"]
+
+    # and the run is re-ranked as a whole: ranks stay 1..n with no gaps
+    after = client.get(f"/api/v1/runs/{run_id}/results").json()["results"]
+    assert [r["rank"] for r in after] == list(range(1, len(after) + 1))
+    assert "Kerem Aydın" in [r["candidate"]["display_name"] for r in after]
+
+
+def test_a_correction_can_also_remove_a_candidate(client, storage_stub, fake_models):
+    job_id = _screened_job(client, storage_stub, "Override Testi B")
+    run_id = _latest_run(client, job_id)
+    results = client.get(f"/api/v1/runs/{run_id}/results").json()
+    top = results["results"][0]
+
+    body = client.post(
+        f"/api/v1/runs/{run_id}/results/{top['application_id']}"
+        "/requirements/R1_experience/override",
+        json={"verdict": "not_met", "reason": "Deneyim başka sektörde"},
+    ).json()
+    assert body["hard_result"] == "fail"
+    assert body["rank"] is None
+    assert body["band"] == "rejected"
+
+    remaining = client.get(f"/api/v1/runs/{run_id}/results").json()
+    assert top["application_id"] not in [r["application_id"] for r in remaining["results"]]
+    assert [r["rank"] for r in remaining["results"]] == list(
+        range(1, len(remaining["results"]) + 1)
+    ), "removing someone must not leave a hole in the ranking"
+
+
+def test_overrides_accumulate_and_the_latest_verdict_wins(client, storage_stub, fake_models):
+    job_id = _screened_job(client, storage_stub, "Override Testi C")
+    run_id = _latest_run(client, job_id)
+    application_id = client.get(f"/api/v1/runs/{run_id}/results").json()["results"][0][
+        "application_id"
+    ]
+    url = (
+        f"/api/v1/runs/{run_id}/results/{application_id}"
+        "/requirements/R2_b2b/override"
+    )
+    client.post(url, json={"verdict": "not_met", "reason": "ilk okuma"})
+    body = client.post(url, json={"verdict": "partially_met", "reason": "ikinci okuma"}).json()
+
+    row = next(r for r in body["result"]["requirements"] if r["req_id"] == "R2_b2b")
+    assert row["verdict"] == "partially_met"
+    assert len(body["result"]["human_overrides"]) == 2, "the history is kept, not overwritten"
+
+
+def test_bad_corrections_are_refused(client, new_client, storage_stub, fake_models):
+    job_id = _screened_job(client, storage_stub, "Override Testi D")
+    run_id = _latest_run(client, job_id)
+    application_id = client.get(f"/api/v1/runs/{run_id}/results").json()["results"][0][
+        "application_id"
+    ]
+    base = f"/api/v1/runs/{run_id}/results/{application_id}/requirements"
+
+    assert client.post(f"{base}/R1_experience/override", json={"verdict": "harika"}).status_code == 422
+    assert client.post(f"{base}/R_yok/override", json={"verdict": "met"}).status_code == 422
+
+    outsider = new_client()
+    outsider.post(
+        "/api/v1/auth/signup",
+        json={
+            "company_name": "Başka Şirket",
+            "name": "Ali Vural",
+            "email": "ali@baska-sirket.com",
+            "password": "guclu-parola-789",
+        },
+    )
+    assert outsider.post(
+        f"{base}/R1_experience/override", json={"verdict": "met"}
+    ).status_code == 404

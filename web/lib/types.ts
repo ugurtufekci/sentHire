@@ -291,6 +291,14 @@ export interface ResultDocument {
     summary?: string | null;
   };
   corrections: { req_id: string; from_verdict: string; to_verdict: string; note: string }[];
+  /** HR corrections to a verdict — the score below was recomputed from them. */
+  human_overrides?: {
+    req_id: string;
+    from: string | null;
+    to: string;
+    reason: string | null;
+    at: string | null;
+  }[];
   deep_selection_reasons: string[];
   models_used: Record<string, string>;
 }

@@ -30,6 +30,7 @@ from senthire.db.models import (
     ScreeningRun,
 )
 from senthire.db.session import get_sessionmaker
+from senthire.domain.ranking import rank_key
 from senthire.domain.scoring import score as run_scorer
 from senthire.domain.spec import EvaluationSpec
 from senthire.screening import batch
@@ -867,10 +868,8 @@ def score_run(run_id: str) -> dict:
         # rank gate-passed candidates; deterministic tie-break (docs/06)
         passed = [(ev, sr) for ev, sr in rescored if sr.gate.status == "pass"]
         passed.sort(
-            key=lambda pair: (
-                -pair[1].final_score,
-                -(pair[1].confidence or 0),
-                str(pair[0].application_id),
+            key=lambda pair: rank_key(
+                pair[1].final_score, pair[1].confidence, pair[0].application_id
             )
         )
         for rank, (ev, _) in enumerate(passed, start=1):

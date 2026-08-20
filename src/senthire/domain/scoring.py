@@ -37,7 +37,9 @@ class RequirementVerdict(BaseModel):
     confidence: float | None = None
     info_status: Literal["explicit", "inferred", "ambiguous", "missing"] | None = None
     evidence: list[dict] = []
-    source_stage: Literal["deterministic", "light", "deep"] | None = None
+    # "human" outranks every machine stage: an override is a person taking
+    # responsibility for the verdict, and the scorer treats it like any other.
+    source_stage: Literal["deterministic", "light", "deep", "human"] | None = None
     borderline: bool = False
 
     def effective_score(self) -> float | None:

@@ -13,21 +13,45 @@ import {
   BAND_LABEL,
   confidenceLabel,
 } from "@/lib/format";
-import type { ResultDetail } from "@/lib/types";
+import type { ResultDetail, Verdict } from "@/lib/types";
+
+const CORRECTABLE: Verdict[] = ["met", "partially_met", "not_met", "unknown"];
 
 export default function CandidateDrawer({
   runId,
   applicationId,
   candidateName,
   onClose,
+  onCorrected,
 }: {
   runId: string;
   applicationId: string;
   candidateName: string | null;
   onClose: () => void;
+  /** A correction re-scores and re-ranks the run, so the list behind the
+   *  drawer is stale the moment one is saved. */
+  onCorrected?: () => void;
 }) {
   const [detail, setDetail] = useState<ResultDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const correct = (reqId: string, verdict: Verdict) => {
+    setSaving(true);
+    setError(null);
+    api
+      .overrideVerdict(runId, applicationId, reqId, verdict, reason.trim() || null)
+      .then((updated) => {
+        setDetail(updated);
+        setEditing(null);
+        setReason("");
+        onCorrected?.();
+      })
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setSaving(false));
+  };
 
   useEffect(() => {
     api
@@ -197,6 +221,11 @@ export default function CandidateDrawer({
                       </span>
                       <div className="hstack">
                         <span className="chip">{TYPE_LABEL[r.type]}</span>
+                        {r.source_stage === "human" && (
+                          <span className="chip accent" title="Bu kararı bir kişi düzeltti">
+                            İK düzeltmesi
+                          </span>
+                        )}
                         {r.info_status && (
                           <span className={`chip${r.info_status === "explicit" ? " accent" : ""}`}>
                             {INFO_STATUS_LABEL[r.info_status]}
@@ -218,6 +247,49 @@ export default function CandidateDrawer({
                         {e.page != null && <span className="page">s.{e.page}</span>}
                       </div>
                     ))}
+
+                    {editing === r.req_id ? (
+                      <div className="correction">
+                        <span className="tiny">Doğru değerlendirme sizce ne?</span>
+                        <div className="hstack" style={{ gap: 6 }}>
+                          {CORRECTABLE.filter((v) => v !== r.verdict).map((v) => (
+                            <button
+                              key={v}
+                              className="btn seg-btn"
+                              disabled={saving}
+                              onClick={() => correct(r.req_id, v)}
+                            >
+                              {VERDICT_LABEL[v]}
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          className="input"
+                          placeholder="Kısa gerekçe (isteğe bağlı, kayda geçer)"
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                        />
+                        <button
+                          className="btn btn-ghost"
+                          onClick={() => {
+                            setEditing(null);
+                            setReason("");
+                          }}
+                        >
+                          Vazgeç
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="btn btn-ghost correction-open"
+                        onClick={() => {
+                          setEditing(r.req_id);
+                          setReason("");
+                        }}
+                      >
+                        Katılmıyorum — düzelt
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

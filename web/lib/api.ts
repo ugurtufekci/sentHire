@@ -22,6 +22,7 @@ import type {
   Template,
   TimelineResponse,
   UploadSlot,
+  Verdict,
 } from "@/lib/types";
 
 export class ApiError extends Error {
@@ -201,6 +202,18 @@ export const api = {
   runResults: (runId: string) => request<ResultsResponse>(`/runs/${runId}/results`),
   resultDetail: (runId: string, applicationId: string) =>
     request<ResultDetail>(`/runs/${runId}/results/${applicationId}`),
+
+  overrideVerdict: (
+    runId: string,
+    applicationId: string,
+    reqId: string,
+    verdict: Verdict,
+    reason: string | null,
+  ) =>
+    request<ResultDetail>(
+      `/runs/${runId}/results/${applicationId}/requirements/${reqId}/override`,
+      { method: "POST", body: JSON.stringify({ verdict, reason }) },
+    ),
 
   // --- hiring pipeline ---
   pipelineBoard: (jobId: string) => request<PipelineBoard>(`/jobs/${jobId}/pipeline`),
