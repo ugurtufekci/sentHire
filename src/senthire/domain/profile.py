@@ -182,8 +182,14 @@ def compose_profile_document(
     prompt_version: str,
     path: str,
     confidence: float | None,
+    normalization: dict | None = None,
 ) -> dict:
-    """The JSONB document stored in candidate_profiles.profile (docs/03 §3)."""
+    """The JSONB document stored in candidate_profiles.profile (docs/03 §3).
+
+    `normalization` records which vocabulary version rewrote which fields, so a
+    match can be explained ("'Çankaya' → Ankara") and profiles can be
+    re-normalized later without re-parsing.
+    """
     doc = extracted.model_dump(exclude={"full_text"})
     doc["schema_version"] = PROFILE_SCHEMA_VERSION
     doc["derived"] = derived.model_dump()
@@ -194,4 +200,6 @@ def compose_profile_document(
         "confidence": confidence,
         "warnings": extracted.warnings,
     }
+    if normalization is not None:
+        doc["normalization"] = normalization
     return doc

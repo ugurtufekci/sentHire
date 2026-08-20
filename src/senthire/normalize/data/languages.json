@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "note": "Turkish CVs state language level in prose ('iyi derecede İngilizce') or by exam score (YDS 78). Both must land on the same CEFR axis the predicates compare against. Phrases are matched on folded text, longest first.",
+  "phrases": {
+    "native": ["ana dil", "anadil", "anadili", "native", "mother tongue", "ana dili"],
+    "C2": ["ustun duzey", "mukemmel", "proficiency", "c2", "iki dilli", "bilingual"],
+    "C1": ["cok iyi", "ileri duzey", "ileri seviye", "akici", "fluent", "advanced", "c1", "ileri"],
+    "B2": ["iyi derecede", "iyi duzey", "iyi seviye", "orta ileri", "upper intermediate", "upper-intermediate", "b2", "is seviyesinde", "business level", "iyi"],
+    "B1": ["orta duzey", "orta seviye", "intermediate", "b1", "orta"],
+    "A2": ["baslangic", "temel duzey", "temel seviye", "elementary", "basic", "a2", "az", "zayif", "pre intermediate", "pre-intermediate"],
+    "A1": ["a1", "cok az", "giris seviyesi", "beginner"]
+  },
+  "exams": {
+    "yds": {"aliases": ["yds", "e-yds", "eyds", "kpds", "uds", "yokdil"], "bands": [[90, "C1"], [75, "B2"], [60, "B1"], [45, "A2"]]},
+    "toefl_ibt": {"aliases": ["toefl ibt", "toefl-ibt", "toefl"], "bands": [[95, "C1"], [72, "B2"], [42, "B1"], [30, "A2"]]},
+    "ielts": {"aliases": ["ielts"], "bands": [[7.0, "C1"], [5.5, "B2"], [4.0, "B1"], [3.0, "A2"]]},
+    "toeic": {"aliases": ["toeic"], "bands": [[945, "C1"], [785, "B2"], [550, "B1"], [225, "A2"]]},
+    "pte": {"aliases": ["pte"], "bands": [[76, "C1"], [59, "B2"], [43, "B1"], [30, "A2"]]}
+  },
+  "certificates": {
+    "cpe": "C2", "cae": "C1", "fce": "B2", "pet": "B1", "ket": "A2",
+    "testdaf": "B2", "goethe c1": "C1", "goethe b2": "B2", "dele b2": "B2", "delf b2": "B2"
+  },
+  "language_names": {
+    "en": ["ingilizce", "english", "ing", "en"],
+    "tr": ["turkce", "turkish", "tr"],
+    "de": ["almanca", "german", "deutsch", "de"],
+    "fr": ["fransizca", "french", "francais", "fr"],
+    "ar": ["arapca", "arabic", "ar"],
+    "ru": ["rusca", "russian", "ru"],
+    "es": ["ispanyolca", "spanish", "espanol", "es"],
+    "it": ["italyanca", "italian", "it"],
+    "zh": ["cince", "chinese", "mandarin", "zh"],
+    "fa": ["farsca", "persian", "farsi", "fa"],
+    "ku": ["kurtce", "kurdish", "ku"]
+  }
+}

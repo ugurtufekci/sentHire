@@ -40,6 +40,47 @@ raw string ("Kıdemli Saha Satış Uzmanı")
   extracted from the raw title + tenure, so "Junior AE" ≠ "AE Director" even though
   both map to occupation `account_executive`.
 
+## 2a. What is shipped today: the deterministic Turkish layer
+
+Layer 1 of the hybrid — the alias tables — is implemented in
+[`senthire/normalize`](../src/senthire/normalize) and runs inside the parse
+worker, immediately after Stage 1 and before derived fields are computed. It is
+data plus a matcher, with no model call and no network:
+
+| Vocabulary | Maps | Why it earns its place |
+|---|---|---|
+| `titles.json` | raw title → family + seniority (two separate axes) | left to the model, one CV yields `sales_specialist` and the next `sales_representative` for the same job |
+| `geo.json` | 81 provinces, 165 districts, regions, relocation phrases | HR writes "Ankara", CVs write "Çankaya" or "Ostim" — without the table the location predicate answers *unknown* for people who plainly live there |
+| `languages.json` | level prose + YDS/TOEFL/IELTS/TOEIC scores + certificates → CEFR | `languages['en'].cefr_rank` is what predicates compare; "iyi derecede" and "YDS 78" must reach it |
+| `education.json` | degree phrases, university aliases (ODTÜ/METU), fields of study | "Y. Lisans" vs "MBA" vs "Yüksek Lisans" all gate the same way |
+| `industry.json` | legal-suffix stripping + sector keywords | "Örnek Lojistik San. ve Tic. A.Ş." is a logistics company; the suffixes defeat every kind of matching |
+
+Three properties make this layer worth more than a better prompt:
+
+1. **Turkish-aware matching.** `str.lower()` is wrong for Turkish — "İZMİR"
+   does not lowercase to "izmir" — and Turkish glues suffixes onto nouns, so a
+   CV's "Bankası" must reach the table's "banka" (including the k→ğ softening
+   in "Lojistiği"). Both are handled in `normalize/text.py`, bounded so that a
+   stem may grow by a few characters rather than matching loosely.
+2. **It improves without re-parsing.** Adding an alias is a data edit; stored
+   profiles can be re-normalized with no model call. Prompt changes cannot be
+   applied retroactively — this can. Every profile is stamped with the
+   vocabulary version that produced it.
+3. **Every rewrite is recorded.** The profile document carries a
+   `normalization` block listing each change and the alias that caused it, so
+   the UI can show *why* a candidate matched, and a wrong table entry is
+   visible rather than mysterious.
+
+Protected characteristics are excluded at the data layer, not just by prompt:
+a test asserts no vocabulary can produce a canonical value for military
+service, marital status, age, or the other categories in
+[doc 09](09-fairness-and-compliance.md). Military service is the Turkish
+specific trap — it reads as a neutral CV field and is a gender proxy.
+
+Layers 2 and 3 (embedding prefilter, LLM adjudication of cache misses) remain
+as designed above; the alias layer is what they fall back *from*, and every
+alias added shrinks their share of the work.
+
 ## 3. Where each signal is used downstream
 
 | Consumer | What it uses |

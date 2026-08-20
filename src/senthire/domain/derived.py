@@ -20,18 +20,20 @@ from senthire.domain.profile import (
     EmploymentGap,
     ExtractedProfile,
 )
+from senthire.normalize import titles
 
 GAP_MIN_MONTHS = 3
 
 _YM = re.compile(r"^(\d{4})(?:[-/.](\d{1,2}))?")
 _MY = re.compile(r"^(\d{1,2})[-/.](\d{4})$")
 
-_SENIOR_HINTS = ("senior", "kıdemli", "sr.", "sr ")
-_LEAD_HINTS = (
-    "lead", "head", "director", "direktör", "manager", "müdür", "chief",
-    "principal", "vp", "cto", "ceo", "coo", "takım lideri", "yönetici",
-)
-_JUNIOR_HINTS = ("junior", "jr.", "jr ", "intern", "stajyer", "asistan", "yardımcısı", "trainee")
+# Seniority words live in the title taxonomy (senthire/normalize), not in a
+# tuple here: one vocabulary, maintained as data, matched with Turkish-aware
+# folding ("KIDEMLİ".lower() does not equal "kıdemli").
+_TITLE_SENIORITY_RANK = {
+    "intern": 0, "junior": 1, "mid": 2, "senior": 3,
+    "lead": 4, "manager": 4, "director": 4, "executive_suite": 4,
+}
 
 
 def parse_ym(value: str | None) -> date | None:
@@ -159,14 +161,24 @@ def compute_derived(profile: ExtractedProfile, today: date | None = None) -> Der
 
 
 def _seniority(profile: ExtractedProfile, total_months: int) -> str:
-    titles = " ".join(e.title_raw.lower() for e in profile.experience if e.title_raw)
-    if any(h in titles for h in _LEAD_HINTS):
+    """Highest seniority any title claims, with tenure as the fallback.
+
+    Titles beat tenure because a title is a statement the employer made; tenure
+    is only evidence when nobody said anything. A junior *title* still needs
+    short tenure to read as junior — "Uzman Yardımcısı" for eight years is not
+    a beginner.
+    """
+    levels = [titles.classify(e.title_raw).seniority for e in profile.experience if e.title_raw]
+    ranks = [_TITLE_SENIORITY_RANK[level] for level in levels if level in _TITLE_SENIORITY_RANK]
+    top = max(ranks, default=None)
+
+    if top is not None and top >= 4:
         return "lead"
-    if any(h in titles for h in _SENIOR_HINTS):
+    if top == 3:
         return "senior"
     if total_months == 0 and not profile.experience:
         return "unknown"
-    if any(h in titles for h in _JUNIOR_HINTS) and total_months < 36:
+    if top is not None and top <= 1 and total_months < 36:
         return "junior"
     if total_months < 24:
         return "junior"

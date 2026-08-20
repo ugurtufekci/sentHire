@@ -36,7 +36,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-senthire = ["templates_seed/*.json"]
+senthire = ["templates_seed/*.json", "normalize/data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

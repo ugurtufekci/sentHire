@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "note": "Company strings carry legal suffixes that defeat matching ('Örnek Lojistik San. ve Tic. A.Ş.'). Strip them, then read the sector from what is left plus any stated industry.",
+  "legal_suffixes": [
+    "anonim sirketi", "limited sirketi", "a s", "a.s", "as", "ltd sti", "ltd. sti", "ltd", "sti",
+    "san ve tic", "sanayi ve ticaret", "sanayi", "ticaret", "tic", "san", "holding", "grubu",
+    "group", "gmbh", "inc", "llc", "co", "corp", "corporation", "company", "sirketi", "isletmeleri"
+  ],
+  "sectors": {
+    "logistics": ["lojistik", "nakliye", "tasimacilik", "kargo", "sevkiyat", "depolama", "supply chain", "freight", "forwarding", "gumrukleme", "denizcilik", "havacilik kargo"],
+    "software": ["yazilim", "bilisim", "teknoloji", "software", "technology", "bilgi teknolojileri", "it", "saas", "startup", "dijital"],
+    "ecommerce": ["e-ticaret", "eticaret", "e ticaret", "online satis", "marketplace", "pazaryeri"],
+    "finance": ["banka", "bankacilik", "finans", "sigorta", "insurance", "leasing", "faktoring", "yatirim", "portfoy", "fintech", "odeme"],
+    "retail": ["perakende", "magazacilik", "market", "zincir magaza", "avm", "supermarket", "hipermarket"],
+    "automotive": ["otomotiv", "otomobil", "arac", "yedek parca", "lastik", "automotive", "galeri"],
+    "construction": ["insaat", "yapi", "muteahhit", "gayrimenkul", "real estate", "emlak", "taahhut"],
+    "food": ["gida", "food", "icecek", "beverage", "unlu mamuller", "sut", "et ve et urunleri", "restoran zinciri"],
+    "textile": ["tekstil", "konfeksiyon", "hazir giyim", "moda", "textile", "apparel", "deri", "ayakkabi"],
+    "healthcare": ["saglik", "hastane", "tip", "medikal", "medical", "klinik", "laboratuvar", "dis"],
+    "pharma": ["ilac", "pharma", "pharmaceutical", "farma"],
+    "energy": ["enerji", "elektrik uretim", "dogalgaz", "petrol", "akaryakit", "gunes enerjisi", "ruzgar", "epdk"],
+    "telecom": ["telekomunikasyon", "telekom", "gsm", "operator", "iletisim hizmetleri", "fiber"],
+    "education": ["egitim", "okul", "kolej", "universite", "kurs", "dershane", "akademi"],
+    "tourism": ["turizm", "otel", "hotel", "seyahat", "acenta", "acente", "tatil", "resort"],
+    "consulting": ["danismanlik", "consulting", "musavirlik", "denetim", "advisory"],
+    "manufacturing": ["uretim", "imalat", "fabrika", "makine", "metal", "doküm", "plastik", "ambalaj", "kaucuk", "cimento", "seramik", "mobilya"],
+    "chemicals": ["kimya", "chemical", "boya", "kozmetik", "temizlik urunleri"],
+    "agriculture": ["tarim", "hayvancilik", "ziraat", "tohum", "gubre", "seracilik"],
+    "media": ["medya", "reklam", "ajans", "yayincilik", "matbaa", "prodüksiyon", "gazete", "televizyon"],
+    "public": ["belediye", "bakanlik", "kamu", "genel mudurlugu", "kurumu", "valilik", "universite hastanesi"],
+    "defense": ["savunma", "defence", "defense", "havacilik", "aselsan", "roketsan", "tai"]
+  }
+}

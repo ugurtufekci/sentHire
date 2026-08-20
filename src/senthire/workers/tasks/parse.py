@@ -23,6 +23,7 @@ from senthire.domain.derived import compute_derived
 from senthire.domain.profile import compose_profile_document
 from senthire.extraction.extractor import ExtractionFailed, extract_pdf
 from senthire.extraction.pdf import EncryptedPdfError
+from senthire.normalize.profile import normalize_profile
 from senthire.services import storage
 from senthire.workers.celery_app import celery_app
 
@@ -158,6 +159,10 @@ def _parse_document(session: Session, doc: Document, job_id: uuid.UUID, data: by
     if profile.multi_person:
         return _mark_failed(session, doc, "multi_person_document")
 
+    # Deterministic vocabulary before anything is derived or stored: the
+    # extractor's own canonical strings vary per document, and every downstream
+    # comparison assumes one vocabulary (docs/05 §2).
+    profile, normalization = normalize_profile(profile, raw_text=outcome.raw_text)
     derived = compute_derived(profile)
     profile_doc = compose_profile_document(
         profile,
@@ -166,6 +171,7 @@ def _parse_document(session: Session, doc: Document, job_id: uuid.UUID, data: by
         prompt_version=outcome.prompt_version,
         path=outcome.path,
         confidence=profile.confidence,
+        normalization=normalization.as_dict(),
     )
 
     candidate = _resolve_candidate(session, doc.org_id, profile)

@@ -1,0 +1,549 @@
+{
+  "version": 1,
+  "note": "Seniority markers are stripped before family matching, so 'Kıdemli Kurumsal Satış Uzmanı' resolves to (sales_corporate, senior). Aliases are matched on folded text as whole-token runs; the longest match wins.",
+  "seniority_markers": {
+    "intern": [
+      "stajyer",
+      "stajer",
+      "stj",
+      "intern",
+      "internship",
+      "bursiyer"
+    ],
+    "junior": [
+      "junior",
+      "jr",
+      "yardimcisi",
+      "yardimci",
+      "asistani",
+      "assistant",
+      "trainee",
+      "aday",
+      "acemi",
+      "baslangic seviye"
+    ],
+    "senior": [
+      "kidemli",
+      "senior",
+      "sr",
+      "tecrubeli",
+      "uzman kidemli",
+      "lead senior"
+    ],
+    "lead": [
+      "takim lideri",
+      "team lead",
+      "teamlead",
+      "ekip lideri",
+      "lider",
+      "sef",
+      "supervisor",
+      "koordinator",
+      "coordinator",
+      "yetkilisi",
+      "yetkili"
+    ],
+    "manager": [
+      "mudur",
+      "mudurü",
+      "manager",
+      "mgr",
+      "yonetici",
+      "head of",
+      "birim yoneticisi",
+      "grup yoneticisi"
+    ],
+    "director": [
+      "direktor",
+      "director",
+      "genel mudur yardimcisi",
+      "gmy",
+      "vp",
+      "vice president",
+      "bolge muduru"
+    ],
+    "executive_suite": [
+      "genel mudur",
+      "general manager",
+      "ceo",
+      "cto",
+      "cfo",
+      "coo",
+      "cmo",
+      "kurucu",
+      "founder",
+      "yonetim kurulu"
+    ]
+  },
+  "families": [
+    {
+      "id": "sales_field",
+      "label_tr": "Saha satış",
+      "aliases": [
+        "saha satis",
+        "field sales",
+        "bolge satis",
+        "plasiyer",
+        "saha sorumlusu",
+        "saha ekibi",
+        "outdoor sales",
+        "gezici satis"
+      ]
+    },
+    {
+      "id": "sales_inside",
+      "label_tr": "İç satış / telesatış",
+      "aliases": [
+        "ic satis",
+        "inside sales",
+        "telesales",
+        "tele satis",
+        "telefonda satis",
+        "cagri merkezi satis",
+        "call center sales"
+      ]
+    },
+    {
+      "id": "sales_account",
+      "label_tr": "Müşteri yönetimi",
+      "aliases": [
+        "musteri temsilcisi",
+        "account manager",
+        "account executive",
+        "musteri iliskileri",
+        "musteri iliskileri yonetimi",
+        "key account",
+        "anahtar musteri",
+        "buyuk musteri",
+        "portfoy yoneticisi",
+        "client manager",
+        "customer success"
+      ]
+    },
+    {
+      "id": "sales_corporate",
+      "label_tr": "Kurumsal / B2B satış",
+      "aliases": [
+        "kurumsal satis",
+        "corporate sales",
+        "b2b satis",
+        "b2b sales",
+        "kurumsal cozumler",
+        "enterprise sales",
+        "kurumsal musteri",
+        "kurumsal pazarlama satis",
+        "proje satis",
+        "sistem satis"
+      ]
+    },
+    {
+      "id": "sales_retail",
+      "label_tr": "Perakende satış",
+      "aliases": [
+        "magaza satis",
+        "perakende satis",
+        "satis danismani",
+        "satis personeli",
+        "magaza sorumlusu",
+        "store manager",
+        "retail sales",
+        "kasiyer",
+        "reyon"
+      ]
+    },
+    {
+      "id": "sales_generic",
+      "label_tr": "Satış",
+      "aliases": [
+        "satis",
+        "sales",
+        "satis uzmani",
+        "sales specialist",
+        "satis temsilcisi",
+        "sales representative",
+        "satis muhendisi",
+        "sales engineer",
+        "satis destek",
+        "sales support",
+        "satis operasyon"
+      ],
+      "fallback": true,
+      "note": "catch-all: only answers when no specific sales family matches"
+    },
+    {
+      "id": "business_development",
+      "label_tr": "İş geliştirme",
+      "aliases": [
+        "is gelistirme",
+        "business development",
+        "bd",
+        "isgelistirme",
+        "yeni is gelistirme",
+        "partnership",
+        "is ortakligi"
+      ]
+    },
+    {
+      "id": "marketing",
+      "label_tr": "Pazarlama",
+      "aliases": [
+        "pazarlama",
+        "marketing",
+        "dijital pazarlama",
+        "digital marketing",
+        "marka",
+        "brand",
+        "reklam",
+        "performans pazarlama",
+        "sosyal medya",
+        "social media",
+        "seo",
+        "icerik pazarlama",
+        "growth"
+      ]
+    },
+    {
+      "id": "customer_support",
+      "label_tr": "Müşteri hizmetleri",
+      "aliases": [
+        "musteri hizmetleri",
+        "customer service",
+        "customer support",
+        "destek uzmani",
+        "cagri merkezi",
+        "call center",
+        "teknik destek",
+        "technical support",
+        "help desk",
+        "helpdesk"
+      ]
+    },
+    {
+      "id": "logistics",
+      "label_tr": "Lojistik / operasyon",
+      "aliases": [
+        "lojistik",
+        "logistics",
+        "sevkiyat",
+        "nakliye",
+        "tasimacilik",
+        "depo",
+        "warehouse",
+        "supply chain",
+        "tedarik zinciri",
+        "dagitim",
+        "distribution",
+        "filo",
+        "ithalat",
+        "ihracat",
+        "import",
+        "export",
+        "dis ticaret",
+        "gumruk",
+        "customs",
+        "operasyon uzmani",
+        "operations"
+      ]
+    },
+    {
+      "id": "purchasing",
+      "label_tr": "Satın alma",
+      "aliases": [
+        "satin alma",
+        "purchasing",
+        "procurement",
+        "tedarik uzmani",
+        "sourcing",
+        "kategori yonetimi"
+      ]
+    },
+    {
+      "id": "finance_accounting",
+      "label_tr": "Finans / muhasebe",
+      "aliases": [
+        "muhasebe",
+        "accounting",
+        "accountant",
+        "finans",
+        "finance",
+        "mali isler",
+        "on muhasebe",
+        "butce",
+        "budget",
+        "raporlama",
+        "financial",
+        "hazine",
+        "treasury",
+        "denetim",
+        "audit",
+        "mali musavir",
+        "bordro",
+        "payroll"
+      ]
+    },
+    {
+      "id": "hr",
+      "label_tr": "İnsan kaynakları",
+      "aliases": [
+        "insan kaynaklari",
+        "human resources",
+        "ik uzmani",
+        "hr specialist",
+        "hr business partner",
+        "ise alim",
+        "recruiter",
+        "recruitment",
+        "talent acquisition",
+        "egitim ve gelisim",
+        "ozluk"
+      ]
+    },
+    {
+      "id": "software_engineering",
+      "label_tr": "Yazılım geliştirme",
+      "aliases": [
+        "yazilim gelistirici",
+        "yazilim muhendisi",
+        "software developer",
+        "software engineer",
+        "developer",
+        "gelistirici",
+        "backend",
+        "back end",
+        "frontend",
+        "front end",
+        "full stack",
+        "fullstack",
+        "mobil gelistirici",
+        "mobile developer",
+        "android developer",
+        "ios developer",
+        "programci",
+        "programmer",
+        "web gelistirici"
+      ]
+    },
+    {
+      "id": "data",
+      "label_tr": "Veri",
+      "aliases": [
+        "veri analisti",
+        "data analyst",
+        "veri bilimci",
+        "data scientist",
+        "data engineer",
+        "veri muhendisi",
+        "is zekasi",
+        "business intelligence",
+        "bi uzmani",
+        "raporlama analisti",
+        "machine learning",
+        "makine ogrenmesi"
+      ]
+    },
+    {
+      "id": "software_qa",
+      "label_tr": "Yazılım testi",
+      "aliases": [
+        "test uzmani",
+        "yazilim test",
+        "qa engineer",
+        "quality assurance",
+        "test automation",
+        "test otomasyon",
+        "sdet"
+      ]
+    },
+    {
+      "id": "devops",
+      "label_tr": "DevOps / sistem",
+      "aliases": [
+        "devops",
+        "sistem yoneticisi",
+        "sistem uzmani",
+        "system administrator",
+        "sysadmin",
+        "altyapi",
+        "infrastructure",
+        "site reliability",
+        "sre",
+        "cloud engineer",
+        "bulut",
+        "network",
+        "ag uzmani",
+        "siber guvenlik",
+        "cyber security",
+        "bilgi guvenligi"
+      ]
+    },
+    {
+      "id": "product",
+      "label_tr": "Ürün yönetimi",
+      "aliases": [
+        "urun yoneticisi",
+        "product manager",
+        "product owner",
+        "urun sahibi",
+        "urun uzmani",
+        "product specialist"
+      ]
+    },
+    {
+      "id": "project_management",
+      "label_tr": "Proje yönetimi",
+      "aliases": [
+        "proje yoneticisi",
+        "project manager",
+        "proje uzmani",
+        "pmo",
+        "scrum master",
+        "agile coach",
+        "proje koordinatoru"
+      ]
+    },
+    {
+      "id": "design",
+      "label_tr": "Tasarım",
+      "aliases": [
+        "grafik tasarim",
+        "graphic design",
+        "ui tasarim",
+        "ux",
+        "kullanici deneyimi",
+        "urun tasarimci",
+        "designer",
+        "tasarimci"
+      ]
+    },
+    {
+      "id": "manufacturing",
+      "label_tr": "Üretim / imalat",
+      "aliases": [
+        "uretim",
+        "imalat",
+        "production",
+        "makine operatoru",
+        "operator",
+        "bakim onarim",
+        "maintenance",
+        "montaj",
+        "kaynakci",
+        "cnc",
+        "vardiya amiri",
+        "uretim planlama"
+      ]
+    },
+    {
+      "id": "quality_control",
+      "label_tr": "Kalite",
+      "aliases": [
+        "kalite kontrol",
+        "quality control",
+        "kalite guvence",
+        "kalite yonetim",
+        "kalite sistem",
+        "iso sorumlusu"
+      ]
+    },
+    {
+      "id": "engineering",
+      "label_tr": "Mühendislik",
+      "aliases": [
+        "makine muhendisi",
+        "elektrik muhendisi",
+        "elektronik muhendisi",
+        "endustri muhendisi",
+        "insaat muhendisi",
+        "kimya muhendisi",
+        "cevre muhendisi",
+        "harita muhendisi",
+        "jeoloji",
+        "mekatronik",
+        "saha muhendisi",
+        "proje muhendisi",
+        "is guvenligi",
+        "isg uzmani"
+      ]
+    },
+    {
+      "id": "legal",
+      "label_tr": "Hukuk",
+      "aliases": [
+        "hukuk",
+        "avukat",
+        "lawyer",
+        "legal counsel",
+        "hukuk musaviri",
+        "sozlesme yonetimi",
+        "uyum",
+        "compliance uzmani"
+      ]
+    },
+    {
+      "id": "admin",
+      "label_tr": "İdari işler",
+      "aliases": [
+        "idari isler",
+        "ofis yoneticisi",
+        "office manager",
+        "sekreter",
+        "secretary",
+        "yonetici asistani",
+        "executive assistant",
+        "resepsiyon",
+        "arsiv",
+        "evrak"
+      ]
+    },
+    {
+      "id": "education_teaching",
+      "label_tr": "Eğitim",
+      "aliases": [
+        "ogretmen",
+        "teacher",
+        "egitmen",
+        "trainer",
+        "akademisyen",
+        "arastirma gorevlisi",
+        "ogretim gorevlisi",
+        "instructor"
+      ]
+    },
+    {
+      "id": "healthcare",
+      "label_tr": "Sağlık",
+      "aliases": [
+        "hemsire",
+        "nurse",
+        "doktor",
+        "hekim",
+        "eczaci",
+        "fizyoterapist",
+        "saglik memuru",
+        "laborant",
+        "tibbi sekreter",
+        "tibbi satis",
+        "medical representative",
+        "tibbi mumessil"
+      ]
+    },
+    {
+      "id": "hospitality",
+      "label_tr": "Turizm / otelcilik",
+      "aliases": [
+        "otel",
+        "hotel",
+        "resepsiyonist",
+        "on buro",
+        "housekeeping",
+        "asci",
+        "chef",
+        "garson",
+        "servis elemani",
+        "restoran",
+        "f&b",
+        "turizm"
+      ]
+    }
+  ]
+}

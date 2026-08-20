@@ -75,10 +75,13 @@ in that order.
    labeling is mostly automatic — invariant twins and deterministic rules
    carry it, an oracle ensemble judges the rest, and only genuine
    disagreements reach a person ([doc 13](13-corpus-and-labeling.md)).
-2. **Turkish normalization layer.** Canonical titles, universities, sectors,
-   city/district geography, military-service and CEFR conventions, TR-specific
-   CV idioms — maintained as data with tests, feeding both predicates and
-   prompts. This is unglamorous accumulation, which is exactly why it defends.
+2. **Turkish normalization layer.** *(first version shipped —
+   [doc 05 §2a](05-semantic-matching.md))* Canonical titles and seniority, 81
+   provinces and their districts, university aliases, degree phrases, sector
+   keywords, CEFR from prose and exam scores — maintained as data with a test
+   per alias, feeding both predicates and prompts, and improvable without
+   re-parsing a single CV. This is unglamorous accumulation, which is exactly
+   why it defends: a chatbot re-derives it, badly, on every conversation.
 3. **Outcome feedback loop.** The hiring pipeline is not just UX — it captures
    ground truth: which 80+ scores actually got interviews, offers, hires.
    Per-org and per-vertical calibration ("your 75+ candidates accept offers;

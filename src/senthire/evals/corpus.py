@@ -25,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from senthire.domain.profile import ExtractedProfile
 from senthire.domain.spec import EvaluationSpec
 from senthire.evals.deidentify import deidentify_profile, scrub_text
+from senthire.normalize.profile import normalize_profile
 
 
 class _Strict(BaseModel):
@@ -110,7 +111,11 @@ def make_case(
     `seed` is the original document's hash: it keeps the pseudonym stable for
     the same person without storing anything that points back at them.
     """
-    ExtractedProfile.model_validate(profile)  # fail fast on schema drift
+    validated = ExtractedProfile.model_validate(profile)  # fail fast on schema drift
+    # Corpus fixtures must look like what production stores, or the suite
+    # grades the pipeline against inputs it never sees.
+    normalized, _report = normalize_profile(validated, raw_text=text)
+    profile = normalized.model_dump(mode="json")
     clean = deidentify_profile(profile, salt=salt, seed=seed)
     scrubbed = scrub_text(text, clean.replacements) if text else None
     digest = fingerprint(clean.profile)
