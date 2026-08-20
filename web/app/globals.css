@@ -457,3 +457,6 @@ button { font: inherit; }
 .tie-mark {
   margin-left: 4px; color: var(--muted); font-size: 12px; cursor: help;
 }
+
+/* A rule's basis reads as a fact, not as a quotation. */
+.evidence.rule { font-style: normal; border-left-color: var(--line); }

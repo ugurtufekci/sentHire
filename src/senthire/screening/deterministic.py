@@ -6,7 +6,7 @@ Pure functions: (spec, profile) → verdicts + knockout decision. $0, no LLM.
 from dataclasses import dataclass, field
 
 from senthire.domain import anchors
-from senthire.domain.predicates import evaluate_with_borderline
+from senthire.domain.predicates import PredicateError, evaluate_with_borderline, resolve_field
 from senthire.domain.scoring import RequirementVerdict
 from senthire.domain.spec import EvaluationSpec
 
@@ -19,6 +19,26 @@ class DeterministicResult:
     knocked_out: bool = False
     borderline: bool = False
     knockout_reasons: list[str] = field(default_factory=list)  # req_ids
+
+
+def _rule_evidence(req, profile: dict) -> list[dict]:
+    """The field this rule read and the value it found, as evidence."""
+    predicate = req.deterministic.predicate if req.deterministic else {}
+    field_path = predicate.get("field")
+    if not field_path:
+        return []
+    try:
+        value, present = resolve_field(profile, str(field_path))
+    except PredicateError:
+        return []
+    return [
+        {
+            "field": field_path,
+            "observed": value if present else None,
+            "expected": {"op": predicate.get("op"), "value": predicate.get("value")},
+            "present": present,
+        }
+    ]
 
 
 def run_deterministic_stage(spec: EvaluationSpec, profile: dict) -> DeterministicResult:
@@ -41,6 +61,12 @@ def run_deterministic_stage(spec: EvaluationSpec, profile: dict) -> Deterministi
             score={"met": 1.0, "not_met": 0.0}.get(verdict),
             confidence=1.0,  # deterministic checks are certain about what they checked
             info_status="explicit" if verdict != "unknown" else "missing",
+            # What the rule actually read. A model-judged verdict quotes the CV;
+            # a computed one has no quote to give, and without this it arrives on
+            # screen as a bare verdict — "Karşılamıyor" with nothing behind it,
+            # which is exactly the unexplained answer this product refuses to
+            # give (docs/06 §4).
+            evidence=_rule_evidence(req, profile),
             source_stage="deterministic",
             borderline=borderline,
         )

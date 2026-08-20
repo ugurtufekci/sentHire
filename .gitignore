@@ -17,3 +17,6 @@ node_modules/
 *.pdf
 corpus/**/raw/
 corpus/**/*.salt
+
+# Redis snapshot from a local dev server
+dump.rdb

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from senthire.api.deps import get_current_user, get_db, get_org, parse_uuid
 from senthire.api.enqueue import enqueue_after_commit
+from senthire.config import get_settings
 from senthire.db.models import (
     Application,
     Candidate,
@@ -68,6 +69,11 @@ def start_run(
         raise HTTPException(status_code=409, detail="no parsed candidates to screen")
 
     run = ScreeningRun(org_id=org.id, job_id=job.id, spec_id=spec_row.id, mode=payload.mode)
+    if get_settings().fake_models:
+        # Stamped at the source. A demo result that cannot be told apart from a
+        # real screening is a liability, so the run carries the mark and the UI
+        # repeats it.
+        run.funnel = {"fake_models": True}
     session.add(run)
     session.flush()
 

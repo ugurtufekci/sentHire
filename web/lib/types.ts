@@ -206,6 +206,8 @@ export interface RunStatus {
     deep_analyzed?: number;
     ranked?: number;
     error?: string;
+    /** True when the run was produced by the offline demo models. */
+    fake_models?: boolean;
     /** Per-criterion: how many distinct levels it produced across the cohort. */
     consistency?: {
       req_id: string;
@@ -276,11 +278,21 @@ export interface RequirementRow {
   score: number | null;
   confidence: number;
   info_status: InfoStatus | null;
-  evidence: { quote: string; page?: number | null }[];
+  /** Either a quote from the CV (model-judged) or the field a rule read. */
+  evidence: {
+    quote?: string;
+    page?: number | null;
+    field?: string;
+    observed?: unknown;
+    expected?: { op?: string; value?: unknown };
+    present?: boolean;
+  }[];
   source_stage: string | null;
   borderline: boolean;
   /** Which rung of the requirement's ladder this score sits on. */
   level_label?: string | null;
+  /** The judge's own one-line explanation. */
+  reasoning?: string | null;
 }
 
 export interface ResultDocument {
@@ -305,6 +317,8 @@ export interface ResultDocument {
     summary?: string | null;
   };
   corrections: { req_id: string; from_verdict: string; to_verdict: string; note: string }[];
+  /** Text in the CV addressed to the evaluator. Surfaced, never penalized. */
+  integrity?: { kind: string; matched: string; quote: string }[];
   /** HR corrections to a verdict — the score below was recomputed from them. */
   human_overrides?: {
     req_id: string;

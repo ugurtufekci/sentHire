@@ -12,6 +12,8 @@ import {
   bandClass,
   BAND_LABEL,
   confidenceLabel,
+  INJECTION_KIND_LABEL,
+  ruleEvidence,
 } from "@/lib/format";
 import type { ResultDetail, Verdict } from "@/lib/types";
 
@@ -195,6 +197,26 @@ export default function CandidateDrawer({
               </section>
             )}
 
+            {(doc.integrity?.length ?? 0) > 0 && (
+              <section>
+                <div className="notice warn">
+                  <strong>Dikkat:</strong> Bu CV, değerlendirme sistemine talimat
+                  vermeye çalışan metin içeriyor. Puanlamaya <em>etki etmedi</em> —
+                  kararı siz verin.
+                </div>
+                <div className="stack" style={{ gap: 6, marginTop: 8 }}>
+                  {doc.integrity!.map((f, i) => (
+                    <div key={i} className="req-card">
+                      <span className="req-title">
+                        {INJECTION_KIND_LABEL[f.kind] ?? f.kind}
+                      </span>
+                      <div className="evidence">&ldquo;{f.quote}&rdquo;</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Kriter kriter değerlendirme */}
             <section>
               <span className="field-label">Kriterler</span>
@@ -242,12 +264,24 @@ export default function CandidateDrawer({
                         : ""}
                       {` · güven ${confidenceLabel(r.confidence)}`}
                     </div>
-                    {r.evidence.map((e, i) => (
-                      <div key={i} className="evidence">
-                        &ldquo;{e.quote}&rdquo;{" "}
-                        {e.page != null && <span className="page">s.{e.page}</span>}
+                    {r.reasoning && <div className="req-source">{r.reasoning}</div>}
+                    {r.verdict === "unknown" && !r.reasoning && (
+                      <div className="req-source">
+                        CV&apos;de bu konuda bilgi bulunamadı — aday aleyhine sayılmadı.
                       </div>
-                    ))}
+                    )}
+                    {r.evidence.map((e, i) =>
+                      e.quote ? (
+                        <div key={i} className="evidence">
+                          &ldquo;{e.quote}&rdquo;{" "}
+                          {e.page != null && <span className="page">s.{e.page}</span>}
+                        </div>
+                      ) : (
+                        <div key={i} className="evidence rule">
+                          {ruleEvidence(e)}
+                        </div>
+                      ),
+                    )}
 
                     {editing === r.req_id ? (
                       <div className="correction">

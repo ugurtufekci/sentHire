@@ -176,6 +176,14 @@ export default function RunPage() {
         </div>
       )}
 
+      {run?.funnel.fake_models && (
+        <div className="notice warn" style={{ marginBottom: 16 }}>
+          <strong>Demo modu</strong> — bu tarama gerçek yapay zekâ değerlendirmesi
+          içermez. Sonuçlar basit anahtar kelime eşleşmesiyle üretildi, işe alım
+          kararı için kullanılamaz.
+        </div>
+      )}
+
       {run?.status === "complete" && (run.funnel.consistency?.length ?? 0) > 0 && (
         <CriteriaNotes rows={run.funnel.consistency!} />
       )}

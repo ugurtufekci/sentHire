@@ -106,6 +106,10 @@ def deep_content(
 
 def light_screen(spec: EvaluationSpec, profile: dict) -> tuple[LightScreenOutput, LlmUsage]:
     settings = get_settings()
+    if settings.fake_models:
+        from senthire.demo.models import light_screen as offline
+
+        return offline(spec, profile)
     return call_model(
         settings.light_screen_model,
         prompts.LIGHT_SYSTEM,
@@ -122,6 +126,10 @@ def deep_analyze(
     light_judgments: list[dict],
 ) -> tuple[DeepAnalysisOutput, LlmUsage]:
     settings = get_settings()
+    if settings.fake_models:
+        from senthire.demo.models import deep_analyze as offline
+
+        return offline(spec, profile, raw_text, light_judgments)
     return call_model(
         settings.deep_analysis_model,
         prompts.DEEP_SYSTEM,

@@ -36,6 +36,17 @@ class NormalizationReport:
             {"path": path, "field": name, "from": before, "to": after, "via": via}
         )
 
+    def declined(self, path: str, name: str, saw, via: str) -> None:
+        """Something was recognized and deliberately not applied.
+
+        Recorded even though nothing changed: "we read this and chose to ignore
+        it" is exactly the kind of decision a recruiter should be able to see,
+        and a silent non-action is indistinguishable from a gap in the tables.
+        """
+        self.changes.append(
+            {"path": path, "field": name, "from": saw, "to": None, "via": via, "declined": True}
+        )
+
     @property
     def filled(self) -> int:
         return sum(1 for c in self.changes if c["from"] in (None, ""))
@@ -75,7 +86,17 @@ def normalize_profile(
 
 def _normalize_location(out: ExtractedProfile, raw_text: str | None, report) -> None:
     location = out.location
-    match = geo.resolve(location.raw or location.city_canonical)
+    source = location.raw or location.city_canonical
+    # Aydın, Van, Kars, Bolu, Ordu, Rize and Sinop are provinces *and* common
+    # Turkish surnames. If the only thing a "location" says is the candidate's
+    # own name, resolving it would move Kerem Aydın to Aydın — a mistake that
+    # reads as data rather than as an error, and one an extractor makes easily
+    # because the name is the first line of every CV.
+    if _is_person_name(source, out.identity.full_name):
+        report.declined("location", "city_canonical", source, "geo:name-collision")
+        location.city_canonical = None
+        source = None
+    match = geo.resolve(source)
     if match.province:
         # A correction, not just a fill: extractors routinely put the district
         # ("Çankaya") in city_canonical, which no requirement ever compares to.
@@ -92,6 +113,17 @@ def _normalize_location(out: ExtractedProfile, raw_text: str | None, report) -> 
             report.record("location", "relocation_signal", None, signal, "geo:phrase")
             location.relocation_signal.value = signal
             location.relocation_signal.info_status = "explicit"
+
+
+def _is_person_name(value: str | None, full_name: str | None) -> bool:
+    """True when the "location" is really (part of) the candidate's own name."""
+    if not value or not full_name:
+        return False
+    from senthire.normalize.text import tokens
+
+    value_tokens = tokens(value)
+    name_tokens = tokens(full_name)
+    return bool(value_tokens) and all(token in name_tokens for token in value_tokens)
 
 
 def _normalize_experience(out: ExtractedProfile, report) -> None:

@@ -40,6 +40,11 @@ def _client() -> anthropic.Anthropic:
 
 
 def extract_pdf(data: bytes, *, escalated: bool = False) -> ExtractionOutcome:
+    if get_settings().fake_models:
+        from senthire.demo.models import extract_pdf as offline
+
+        return offline(data, escalated=escalated)
+
     settings = get_settings()
     analysis = analyze_pdf(data)
     if analysis.page_count == 0:

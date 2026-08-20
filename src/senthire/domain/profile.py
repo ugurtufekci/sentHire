@@ -183,6 +183,7 @@ def compose_profile_document(
     path: str,
     confidence: float | None,
     normalization: dict | None = None,
+    integrity: list[dict] | None = None,
 ) -> dict:
     """The JSONB document stored in candidate_profiles.profile (docs/03 §3).
 
@@ -202,4 +203,8 @@ def compose_profile_document(
     }
     if normalization is not None:
         doc["normalization"] = normalization
+    if integrity:
+        # Text in the CV addressed to the evaluator. Recorded on the document,
+        # never acted on automatically (docs/09 §5).
+        doc["integrity"] = integrity
     return doc

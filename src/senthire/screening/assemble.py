@@ -25,6 +25,7 @@ def judgment_to_verdict(judgment: ReqJudgment, stage: str) -> RequirementVerdict
         confidence=judgment.confidence,
         info_status=judgment.info_status,
         evidence=[e.model_dump() for e in judgment.evidence],
+        reasoning=judgment.reasoning,
         source_stage=stage,  # type: ignore[arg-type]
     )
 
@@ -138,6 +139,7 @@ def build_result_document(
                 "evidence": verdict.evidence,
                 "source_stage": verdict.source_stage,
                 "borderline": verdict.borderline,
+                "reasoning": verdict.reasoning,
                 # Which rung of this requirement's ladder the score sits on —
                 # "Büyük ölçüde" reads as a judgment; "0.75" reads as a
                 # measurement nobody took.

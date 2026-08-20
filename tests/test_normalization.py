@@ -443,3 +443,33 @@ def test_every_source_directory_is_an_importable_package():
         and not (directory / "__init__.py").exists()
     ]
     assert not missing, f"directories with modules but no __init__.py: {missing}"
+
+
+@pytest.mark.parametrize("surname", ["Aydın", "Van", "Kars", "Bolu", "Ordu", "Rize", "Sinop"])
+def test_a_surname_that_is_also_a_province_does_not_relocate_the_candidate(surname):
+    """Half of Turkey's provinces are common surnames, and the candidate's name
+    is the first line of every CV — so an extractor puts it in the location
+    field sooner or later. Resolving it would move Kerem Aydın to Aydın, and
+    that failure reads as data rather than as an error."""
+    profile = ExtractedProfile.model_validate(
+        {
+            "identity": {"full_name": f"Kerem {surname}"},
+            "location": {"raw": surname},
+        }
+    )
+    out, report = normalize_profile(profile)
+    assert out.location.city_canonical is None
+    assert any(c["via"] == "geo:name-collision" for c in report.changes)
+
+
+def test_a_real_location_still_resolves_when_it_shares_a_word_with_the_name():
+    profile = ExtractedProfile.model_validate(
+        {
+            "identity": {"full_name": "Kerem Aydın"},
+            "location": {"raw": "Aydın / Efeler"},  # this one really is the province
+        }
+    )
+    out, _ = normalize_profile(profile)
+    assert out.location.city_canonical == "Aydın", (
+        "the guard must only fire when the location says nothing but the name"
+    )

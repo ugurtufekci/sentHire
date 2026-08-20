@@ -224,7 +224,11 @@ def run_start(run_id: str) -> dict:
             else:
                 pending.append(app)
 
+        # Merge, never replace: the run may already carry marks set when it was
+        # created (the offline-demo stamp, for one), and losing them would let a
+        # demo result be read as a real screening.
         run.funnel = {
+            **(run.funnel or {}),
             "total": len(pending) + memoized,
             "memoized": memoized,
             "deep_pending": [],
@@ -383,6 +387,8 @@ def _persist_light_evaluation(
             set(result_doc.get("review_reasons", [])) | {"light_screen_failed"}
         )
         result_doc["light_error"] = light_failed
+
+    _carry_integrity(result_doc, profile_row)
     session.add(
         Evaluation(
             org_id=run.org_id,
@@ -568,14 +574,6 @@ def _maybe_finish_deep_phase(session: Session, run: ScreeningRun) -> None:
         _try_advance(session, run.id, "deep_analysis", "scoring", score_run, str(run.id))
 
 
-@celery_app.task(
-    name="senthire.screen.deep",
-    autoretry_for=TRANSIENT,
-    retry_backoff=5,
-    retry_backoff_max=300,
-    retry_jitter=True,
-    max_retries=5,
-)
 def _persist_deep_failure(ev: Evaluation, error: str) -> None:
     """Deep is an enhancement: a permanent failure keeps the light result,
     flagged for review rather than blocking the run (docs/08 §6)."""
@@ -638,6 +636,7 @@ def _persist_deep_evaluation(
         evidence_stats=evidence_stats,
         models_used=models_used,
     )
+    _carry_integrity(ev.result, profile_row)
     ev.stage_reached = "deep"
     ev.hard_result = "fail" if score_result.gate.status == "fail" else "pass"
     ev.overall_score = score_result.final_score
@@ -646,10 +645,39 @@ def _persist_deep_evaluation(
     return len(output.corrections)
 
 
+def _carry_integrity(result_doc: dict, profile_row: CandidateProfileRow) -> None:
+    """Attach the document's manipulation findings to a freshly built result.
+
+    Called from every stage that builds a result document. Stage 5 rebuilds the
+    document from scratch, so without this a candidate flagged at Stage 4 comes
+    out of deep analysis clean — the flag silently deleted by the stage that was
+    supposed to look harder.
+
+    The score is never touched: the candidate is not penalized, the recruiter is
+    informed (docs/09 §5).
+    """
+    integrity = (profile_row.profile or {}).get("integrity") or []
+    if not integrity:
+        return
+    result_doc["integrity"] = integrity
+    result_doc["needs_review"] = True
+    result_doc["review_reasons"] = sorted(
+        set(result_doc.get("review_reasons", [])) | {"prompt_injection_detected"}
+    )
+
+
 def _light_judgments(ev: Evaluation) -> list[dict]:
     return [r for r in ev.result.get("requirements", []) if r.get("source_stage") == "light"]
 
 
+@celery_app.task(
+    name="senthire.screen.deep",
+    autoretry_for=TRANSIENT,
+    retry_backoff=5,
+    retry_backoff_max=300,
+    retry_jitter=True,
+    max_retries=5,
+)
 def deep_application(run_id: str, application_id: str) -> dict:
     """Stage 5 for one selected candidate: verify + correct, then re-merge."""
     session = _session()

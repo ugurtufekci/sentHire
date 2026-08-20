@@ -24,6 +24,7 @@ from senthire.domain.profile import compose_profile_document
 from senthire.extraction.extractor import ExtractionFailed, extract_pdf
 from senthire.extraction.pdf import EncryptedPdfError
 from senthire.normalize.profile import normalize_profile
+from senthire.screening.injection import scan as scan_for_injection
 from senthire.services import storage
 from senthire.workers.celery_app import celery_app
 
@@ -172,6 +173,9 @@ def _parse_document(session: Session, doc: Document, job_id: uuid.UUID, data: by
         path=outcome.path,
         confidence=profile.confidence,
         normalization=normalization.as_dict(),
+        # Scanned before any judging model sees the document, so a CV that
+        # tries to instruct the evaluator is on the record either way.
+        integrity=scan_for_injection(outcome.raw_text),
     )
 
     candidate = _resolve_candidate(session, doc.org_id, profile)
@@ -235,7 +239,22 @@ def _resolve_candidate(session: Session, org_id: uuid.UUID, profile) -> Candidat
             identity_keys=[hashlib.sha256(e.encode()).hexdigest() for e in emails],
         )
         session.add(candidate)
-        session.flush()
+        try:
+            session.flush()
+        except IntegrityError:
+            # Another worker resolved the same person first (migration 0009).
+            # Take theirs: two rows for one candidate would show up twice in the
+            # ranking and be screened twice.
+            session.rollback()
+            candidate = session.scalar(
+                select(Candidate).where(
+                    Candidate.org_id == org_id,
+                    Candidate.primary_email.in_(emails),
+                    Candidate.erased_at.is_(None),
+                )
+            )
+            if candidate is None:  # not the race after all — surface it
+                raise
     elif profile.identity.full_name and not candidate.display_name:
         candidate.display_name = profile.identity.full_name
     return candidate

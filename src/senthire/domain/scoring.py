@@ -37,6 +37,9 @@ class RequirementVerdict(BaseModel):
     confidence: float | None = None
     info_status: Literal["explicit", "inferred", "ambiguous", "missing"] | None = None
     evidence: list[dict] = []
+    # The judge's own one-line explanation. The most readable artifact the
+    # pipeline produces, and it used to be dropped before reaching the screen.
+    reasoning: str | None = None
     # "human" outranks every machine stage: an override is a person taking
     # responsibility for the verdict, and the scorer treats it like any other.
     source_stage: Literal["deterministic", "light", "deep", "human"] | None = None

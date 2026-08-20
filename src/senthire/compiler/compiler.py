@@ -51,6 +51,11 @@ def compile_spec(
     version: int,
     locale: str = "tr",
 ) -> CompileResult:
+    if get_settings().fake_models:
+        from senthire.demo.models import compile_spec as offline
+
+        return offline(template_spec, nl_text, version=version, locale=locale)
+
     """LLM call + deterministic assembly. Runs in a worker (docs/01 §3)."""
     settings = get_settings()
     template_reqs = list(template_spec.requirements) if template_spec else []

@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -16,6 +17,12 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:3000"]
 
     # --- object storage (S3-compatible; MinIO in dev) ---
+    # "s3" for any S3-compatible service; "local" writes to disk and serves
+    # uploads through the API itself, so the product runs with no external
+    # services at all (development and offline demos only — see
+    # senthire.api.routes.local_storage).
+    storage_backend: Literal["s3", "local"] = "s3"
+    local_storage_dir: str = ".senthire-storage"
     s3_endpoint_url: str | None = "http://localhost:9000"
     # Endpoint browsers can reach for presigned PUT/GET (signature binds the host,
     # so inside docker-compose the internal "minio:9000" endpoint can't be used
@@ -36,6 +43,10 @@ class Settings(BaseSettings):
     # Offline labeling oracle (senthire.evals.autolabel). Never on the request
     # path, so it is free to be slower and stronger than the screening tiers.
     label_oracle_model: str = "claude-sonnet-5"
+    # Offline demo: every model call is served by senthire.demo instead of the
+    # API. Runs started this way are stamped so nobody can mistake the output
+    # for a real screening (docs/07 §7).
+    fake_models: bool = False
     # ANTHROPIC_API_KEY is read from the environment by the Anthropic SDK itself.
 
     # --- intake limits (docs/02 Stage 0) ---
