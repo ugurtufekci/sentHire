@@ -246,6 +246,53 @@ def cmd_promote(args) -> int:
     return 0
 
 
+def cmd_harvest(args) -> int:
+    """Import production corrections — the labels customers already produced."""
+    import os as _os
+    import uuid as _uuid
+
+    if args.database_url:
+        _os.environ["SENTHIRE_DATABASE_URL"] = args.database_url
+    from senthire.config import get_settings
+    from senthire.db.session import get_engine, get_sessionmaker
+    from senthire.evals.harvest import correction_summary, harvest_corrections
+
+    get_settings.cache_clear()
+    get_engine.cache_clear()
+    get_sessionmaker.cache_clear()
+    session = get_sessionmaker()()
+    try:
+        if args.list:
+            rows = correction_summary(session)
+            if not rows:
+                print("no corrections recorded yet")
+                return 0
+            for row in rows:
+                print(f"  {row['corrections']:>4}  {row['job_id']}  {row['title']}")
+            return 0
+
+        report = harvest_corrections(
+            session,
+            _pool(args),
+            source_job_id=_uuid.UUID(args.source_job),
+            job_name=args.job,
+            salt=_salt(args),
+            as_of=args.as_of,
+        )
+    finally:
+        session.close()
+
+    print(
+        f"harvested {report.imported} case(s) "
+        f"({report.duplicates} already in the pool), {report.labels} human label(s)"
+    )
+    for reason, count in sorted(report.skipped.items()):
+        print(f"  skipped ({reason}): {count}")
+    if report.labels:
+        print("\nrun `promote` to turn them into a golden case")
+    return 0
+
+
 def cmd_stats(args) -> int:
     pool = _pool(args)
     cases = pool.cases()
@@ -327,6 +374,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--no-invariants", action="store_true")
     p.add_argument("--order-pairs", type=Path, default=None, help="pairwise ranking labels")
     p.set_defaults(func=cmd_promote)
+
+    p = sub.add_parser("harvest", help="import verdict corrections made in production")
+    _add_common(p)
+    p.add_argument("--job", required=True, help="pool job name to label under")
+    p.add_argument("--source-job", default=None, help="production job id to harvest")
+    p.add_argument("--database-url", default=None, help="defaults to SENTHIRE_DATABASE_URL")
+    p.add_argument("--list", action="store_true", help="show where corrections exist, import nothing")
+    p.set_defaults(func=cmd_harvest)
 
     p = sub.add_parser("stats", help="what the pool contains")
     _add_common(p)

@@ -102,10 +102,16 @@ def new_client(app_env):
 
 @pytest.fixture(scope="module")
 def client(new_client):
-    """The admin of the Aksa Teknoloji workspace, signed in.
+    """The admin of the Aksa Teknoloji workspace, signed in, on a paid plan.
 
     Signing up here (not in a test) keeps every test runnable on its own —
     tests that depend on each other's side effects hide failures.
+
+    The plan matters: the trial allows 25 CVs a month, and this workspace is
+    shared by every screening test in the module. Left on trial, the twentieth
+    test fails on quota because of what the other nineteen uploaded — a failure
+    that says nothing about the code under test. Quota enforcement itself is
+    covered on a workspace of its own.
     """
     c = new_client()
     c.post(
@@ -117,6 +123,16 @@ def client(new_client):
             "password": "guclu-parola-123",
         },
     )
+    import uuid as _uuid
+
+    from senthire.billing import service as billing
+    from senthire.db.session import get_sessionmaker
+
+    org_id = _uuid.UUID(c.get("/api/v1/auth/me").json()["org"]["id"])
+    session = get_sessionmaker()()
+    billing.activate(session, org_id, "profesyonel", provider="test", provider_ref=None)
+    session.commit()
+    session.close()
     return c
 
 
@@ -1451,3 +1467,51 @@ def test_insights_are_tenant_scoped(client, new_client):
         },
     )
     assert outsider.get(f"/api/v1/jobs/{job_id}/insights").status_code == 404
+
+
+def test_a_production_correction_becomes_a_corpus_label(
+    client, storage_stub, fake_models, tmp_path
+):
+    """The flywheel: a recruiter disagreeing once turns into a permanent test."""
+    import uuid as _uuid
+    from datetime import date
+
+    from senthire.db.session import get_sessionmaker
+    from senthire.evals.corpus import Pool
+    from senthire.evals.harvest import harvest_corrections
+
+    job_id = _screened_job(client, storage_stub, "Hasat Testi")
+    run_id = _latest_run(client, job_id)
+    ranked = client.get(f"/api/v1/runs/{run_id}/results").json()["results"]
+    client.post(
+        f"/api/v1/runs/{run_id}/results/{ranked[0]['application_id']}"
+        "/requirements/R2_b2b/override",
+        json={"verdict": "partially_met", "reason": "B2B değil, bayi kanalı"},
+    )
+
+    pool = Pool(tmp_path / "corpus", "harvested")
+    session = get_sessionmaker()()
+    report = harvest_corrections(
+        session,
+        pool,
+        source_job_id=_uuid.UUID(job_id),
+        job_name="b2b",
+        salt="harvest-salt",
+        as_of=date(2026, 8, 1),
+    )
+    session.close()
+
+    assert (report.imported, report.labels) == (1, 1)
+    case = pool.cases()[0]
+    labels = pool.labels("b2b").cases[case.corpus_id]
+    assert labels["R2_b2b"].verdict == "partially_met"
+    assert labels["R2_b2b"].source == "human"
+    assert "bayi kanalı" in labels["R2_b2b"].rationale
+
+    # only the corrected requirement is a label — what nobody challenged is
+    # still the thing under test, not ground truth
+    assert set(labels) == {"R2_b2b"}
+    # and the harvested case carries no personal data
+    stored = pool.case(case.corpus_id).model_dump_json()
+    assert "@example.com" not in stored
+    assert pool.spec("b2b").version >= 1

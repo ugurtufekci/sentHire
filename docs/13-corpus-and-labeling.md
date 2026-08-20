@@ -147,9 +147,15 @@ the tooling can be tried (and tested in CI) without a single API call.
 The corpus is the cold start. Production is the compounding source, and it
 needs no labeling effort at all:
 
-- **Overrides are labels.** When a recruiter overrules a verdict, that is a
-  human label on a real job from a real customer — the highest-value kind. The
-  override table already records them.
+- **Overrides are labels.** *(shipped)* When a recruiter overrules a verdict,
+  that is a human label on a real job from a real customer — the highest-value
+  kind. `corpus_cli harvest --list` shows where corrections have accumulated;
+  `harvest --source-job <id>` imports those candidates into a pool,
+  de-identified on the way out, with the corrected requirements as
+  `source: "human"` labels. Only the *corrected* requirements become labels:
+  what a model said and nobody challenged is the thing under test, not ground
+  truth, and importing it would teach the suite to expect today's answers
+  forever.
 - **Pipeline outcomes are labels.** Which 80+ candidates were actually
   interviewed, offered, hired ([doc 10 §9](10-product-ux.md)) turns screening
   scores into calibration data per org and per vertical.

@@ -90,6 +90,18 @@ def read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+# Blocks that compose_profile_document adds around the extraction. A corpus
+# case stores the extraction only: derived fields are recomputed against the
+# case's pinned as_of date, and re-deriving beats storing a snapshot that
+# silently ages.
+COMPOSED_BLOCKS = ("derived", "extraction", "normalization", "schema_version")
+
+
+def extracted_part(profile: dict) -> dict:
+    """Accept either a bare ExtractedProfile or a stored profile document."""
+    return {k: v for k, v in profile.items() if k not in COMPOSED_BLOCKS}
+
+
 def fingerprint(profile: dict) -> str:
     return hashlib.sha256(
         json.dumps(profile, ensure_ascii=False, sort_keys=True).encode()
@@ -111,7 +123,7 @@ def make_case(
     `seed` is the original document's hash: it keeps the pseudonym stable for
     the same person without storing anything that points back at them.
     """
-    validated = ExtractedProfile.model_validate(profile)  # fail fast on schema drift
+    validated = ExtractedProfile.model_validate(extracted_part(profile))  # fail fast on drift
     # Corpus fixtures must look like what production stores, or the suite
     # grades the pipeline against inputs it never sees.
     normalized, _report = normalize_profile(validated, raw_text=text)
