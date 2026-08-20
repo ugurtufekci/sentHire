@@ -294,7 +294,7 @@ await expect("E", "Manipülasyon girişimi kullanıcıya bildiriliyor", async ()
     if (!/Selin Demir/.test(text)) continue;
     if (!/İnceleme önerilir/.test(text)) throw new Error("listede uyarı yok");
     await rows.nth(i).click();
-    await page.waitForSelector(".drawer", { timeout: 8000 });
+    await page.waitForSelector(".drawer .req-card", { timeout: 15000 });
     const drawer = await page.textContent(".drawer");
     if (!/talimat vermeye çalışan/.test(drawer)) throw new Error("çekmecede açıklama yok");
     if (!/etki etmedi/.test(drawer)) throw new Error("puana etki etmediği söylenmiyor");
@@ -315,8 +315,12 @@ await expect("E", "En yüksek puan otomatik 100 değil (ölçek gerçekçi)", as
 console.log("\nF. Karara katılmadığımda");
 
 await expect("F", "Bir kriter kararını düzeltebiliyorum", async () => {
+  if (await page.locator(".drawer").count()) {
+    await page.click('.drawer button:has-text("Kapat")');
+    await page.waitForSelector(".drawer", { state: "detached", timeout: 8000 });
+  }
   await page.locator(".soft-table tbody tr").first().click();
-  await page.waitForSelector(".drawer .req-card", { timeout: 10000 });
+  await page.waitForSelector(".drawer .req-card", { timeout: 15000 });
   await page.locator(".correction-open").first().click();
   await page.waitForSelector(".correction", { timeout: 5000 });
   await page.fill(".correction .input", "Adayla teyit ettim");
@@ -413,7 +417,13 @@ await expect("H", "Davet edilen kişi katılıp aynı ilanları görüyor", asyn
   await cp.fill("#password", "meslektas-parola-2026");
   await cp.click('button[type="submit"]');
   await cp.waitForURL(BASE + "/", { timeout: 15000 });
-  await cp.waitForSelector("a[href^='/jobs/']", { timeout: 15000 });
+  await cp.waitForFunction(
+    () =>
+      [...document.querySelectorAll("a[href^='/jobs/']")].some((a) =>
+        /\/jobs\/[0-9a-f-]{36}$/.test(a.getAttribute("href"))
+      ),
+    { timeout: 20000 }
+  );
   const text = await cp.textContent("main");
   if (!/Kurumsal Satış Uzmanı/.test(text)) throw new Error("ilanı göremedi");
   await colleague.close();
