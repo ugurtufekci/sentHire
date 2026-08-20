@@ -422,3 +422,24 @@ def test_the_vocabulary_signature_covers_every_table():
     signature = version_signature()
     for path in DATA_DIR.glob("*.json"):
         assert f"{path.stem}{table(path.stem)['version']}" in signature, path.stem
+
+
+def test_every_source_directory_is_an_importable_package():
+    """A missing __init__.py works in a source checkout and vanishes in a wheel.
+
+    setuptools' package finder skips directories without one, so the whole
+    package would simply not ship — a failure that no unit test catches because
+    the tests run against the source tree.
+    """
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1] / "src" / "senthire"
+    missing = [
+        str(directory.relative_to(root))
+        for directory in root.rglob("*")
+        if directory.is_dir()
+        and directory.name != "__pycache__"
+        and any(child.suffix == ".py" for child in directory.iterdir())
+        and not (directory / "__init__.py").exists()
+    ]
+    assert not missing, f"directories with modules but no __init__.py: {missing}"
