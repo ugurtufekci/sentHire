@@ -5,6 +5,7 @@ Pure functions: (spec, profile) → verdicts + knockout decision. $0, no LLM.
 
 from dataclasses import dataclass, field
 
+from senthire.domain import anchors
 from senthire.domain.predicates import evaluate_with_borderline
 from senthire.domain.scoring import RequirementVerdict
 from senthire.domain.spec import EvaluationSpec
@@ -73,6 +74,12 @@ def semantic_requirements(spec: EvaluationSpec) -> list[dict]:
                 "type": req.type,
                 "importance": req.importance,
                 "rubric": req.semantic.rubric,
+                # The scale, sent explicitly: a rubric without rungs invites a
+                # freehand number, and freehand numbers are not comparable.
+                "scale": [
+                    {"score": a["score"], "means": a["definition"]}
+                    for a in anchors.ladder_for(req)
+                ],
             }
         )
     return out

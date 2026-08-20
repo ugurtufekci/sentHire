@@ -55,6 +55,8 @@ class GoldenCandidate(_Strict):
 
 
 class CaseExpectations(_Strict):
+    # Why this case asserts what it asserts — read by people, not by code.
+    note: str | None = None
     as_of: date
     top_k: int = 3
     # golden_ids expected inside the top_k (set membership, order-free)

@@ -123,7 +123,7 @@
       },
       "R3_sales_depth": {
         "verdict": "met",
-        "score": 0.7,
+        "score": 0.75,
         "confidence": 0.85,
         "info_status": "explicit"
       },
@@ -143,8 +143,8 @@
     "needs_review": false,
     "band": "strong",
     "score_range": [
-      70.8,
-      70.8
+      73.6,
+      73.6
     ]
   }
 }

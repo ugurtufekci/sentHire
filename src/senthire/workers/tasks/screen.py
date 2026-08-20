@@ -30,6 +30,7 @@ from senthire.db.models import (
     ScreeningRun,
 )
 from senthire.db.session import get_sessionmaker
+from senthire.domain.anchors import discrimination_report
 from senthire.domain.ranking import rank_key
 from senthire.domain.scoring import score as run_scorer
 from senthire.domain.spec import EvaluationSpec
@@ -940,6 +941,12 @@ def score_run(run_id: str) -> dict:
                 "hard_failed": sum(1 for ev, sr in rescored if sr.gate.status == "fail"),
                 "deep_analyzed": sum(1 for ev, _ in rescored if ev.stage_reached == "deep"),
                 "ranked": len(passed),
+                # Which criteria actually separated people. Cheap to compute
+                # here (the verdicts are in hand) and the only place that sees
+                # the whole cohort at once.
+                "consistency": discrimination_report(
+                    spec, [(ev.result or {}).get("verdicts", {}) for ev, _ in rescored]
+                ),
             }
         )
         run.funnel = funnel

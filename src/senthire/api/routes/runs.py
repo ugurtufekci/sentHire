@@ -20,6 +20,7 @@ from senthire.db.models import (
     ScreeningRun,
     User,
 )
+from senthire.domain.ranking import equivalence_groups
 from senthire.domain.spec import EvaluationSpec
 from senthire.services import overrides as override_service
 
@@ -197,11 +198,15 @@ def run_results(
         (ev for ev in evaluations if ev.rank is not None), key=lambda e: e.rank
     )
     rejected = [ev for ev in evaluations if ev.rank is None]
+    groups = equivalence_groups([e.overall_score for e in ranked])
     out = {
         "run_id": str(run.id),
         "status": run.status,
         "spec_version": next((e.spec_version for e in evaluations), None),
-        "results": [row(e) for e in ranked],
+        "results": [
+            {**row(e), "equivalent_group": group}
+            for e, group in zip(ranked, groups, strict=True)
+        ],
     }
     if include_rejected:
         out["rejected"] = [

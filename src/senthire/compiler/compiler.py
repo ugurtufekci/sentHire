@@ -21,6 +21,7 @@ from senthire.domain.spec import (
     EvaluationSpec,
     Requirement,
     RequirementSource,
+    RubricAnchor,
     SemanticCheck,
 )
 
@@ -180,7 +181,18 @@ def convert_requirement(draft: DraftRequirement) -> tuple[Requirement, list[str]
         rubric = draft.rubric or f"Judge whether the candidate satisfies: {draft.label_en}. Cite evidence."
         if not draft.rubric:
             warnings.append(f"{draft.req_id}: missing rubric — generic rubric substituted")
-        semantic = SemanticCheck(rubric=rubric)
+        anchors = [
+            RubricAnchor(
+                score=a.score, label={"tr": a.label_tr}, definition=a.definition
+            )
+            for a in draft.anchors
+        ]
+        if anchors and len(anchors) < 2:
+            # A one-rung ladder cannot separate anybody; the default is better
+            # than a scale with a single value on it.
+            warnings.append(f"{draft.req_id}: fewer than two anchors — default scale used")
+            anchors = []
+        semantic = SemanticCheck(rubric=rubric, anchors=anchors)
 
     if evaluator == "semantic" and deterministic is None and draft.type == "penalty":
         # penalties need a checkable trigger or an explicit semantic rubric — keep semantic

@@ -9,8 +9,9 @@ Pure functions. The merge rules encode the stage hierarchy:
   deterministic signal when the model abstained.
 """
 
+from senthire.domain import anchors
 from senthire.domain.scoring import RequirementVerdict, ScoreResult
-from senthire.domain.spec import EvaluationSpec
+from senthire.domain.spec import EvaluationSpec, Requirement
 from senthire.screening.schemas import ReqJudgment
 
 _SEVERITY = {"not_met": 3, "unknown": 2, "partially_met": 1, "met": 0, "disqualified": 4}
@@ -44,7 +45,7 @@ def merge_verdicts(
     merged: dict[str, RequirementVerdict] = {}
     for req in spec.requirements:
         det_v = det.get(req.req_id)
-        sem_v = semantic.get(req.req_id)
+        sem_v = _anchored(req, semantic.get(req.req_id))
         if req.evaluator == "deterministic":
             if det_v is not None:
                 merged[req.req_id] = det_v
@@ -58,6 +59,19 @@ def merge_verdicts(
             if combined is not None:
                 merged[req.req_id] = combined
     return merged
+
+
+def _anchored(req: Requirement, verdict: RequirementVerdict | None) -> RequirementVerdict | None:
+    """Put a judged score on the requirement's ladder (docs/06 §2a).
+
+    Deterministic verdicts are left alone: they are computed exactly, including
+    the partial credit a borderline tolerance grants, and rounding arithmetic to
+    a judgment ladder would lose real information.
+    """
+    if verdict is None or verdict.score is None:
+        return verdict
+    snapped = anchors.snap(req, verdict.score)
+    return verdict if snapped == verdict.score else verdict.model_copy(update={"score": snapped})
 
 
 def _combine_hybrid(
@@ -124,6 +138,14 @@ def build_result_document(
                 "evidence": verdict.evidence,
                 "source_stage": verdict.source_stage,
                 "borderline": verdict.borderline,
+                # Which rung of this requirement's ladder the score sits on —
+                # "Büyük ölçüde" reads as a judgment; "0.75" reads as a
+                # measurement nobody took.
+                "level_label": (
+                    anchors.rung_label(req, verdict.effective_score(), spec.locale)
+                    if req.evaluator in {"semantic", "hybrid"}
+                    else None
+                ),
             }
         )
 

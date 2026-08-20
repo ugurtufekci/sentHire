@@ -4,7 +4,11 @@
   "profile": {
     "document_kind": "cv",
     "language": "tr",
-    "location": {"raw": "Ankara", "city_canonical": "Ankara", "country": "TR"},
+    "location": {
+      "raw": "Ankara",
+      "city_canonical": "Ankara",
+      "country": "TR"
+    },
     "experience": [
       {
         "title_raw": "Satış Temsilcisi",
@@ -15,26 +19,63 @@
         "start": "2023-11",
         "is_current": true,
         "description_summary": "B2B office-equipment sales to SMEs; own prospecting and closing.",
-        "signals": {"b2b": true, "quota_carrying": true, "crm_tools": []}
+        "signals": {
+          "b2b": true,
+          "quota_carrying": true,
+          "crm_tools": []
+        }
       }
     ],
     "education": [
-      {"degree": "bachelor", "field_raw": "İktisat", "institution": "Gazi Üniversitesi", "end_year": 2023}
+      {
+        "degree": "bachelor",
+        "field_raw": "İktisat",
+        "institution": "Gazi Üniversitesi",
+        "end_year": 2023
+      }
     ],
-    "skills": [{"name_raw": "Soğuk arama", "evidence": "demonstrated"}],
+    "skills": [
+      {
+        "name_raw": "Soğuk arama",
+        "evidence": "demonstrated"
+      }
+    ],
     "languages": [
-      {"language": "tr", "cefr": "native"},
-      {"language": "en", "level_raw": "Orta üstü", "cefr": "B2"}
+      {
+        "language": "tr",
+        "cefr": "native"
+      },
+      {
+        "language": "en",
+        "level_raw": "Orta üstü",
+        "cefr": "B2"
+      }
     ],
-    "industries": ["office_equipment"],
+    "industries": [
+      "office_equipment"
+    ],
     "tools_technologies": [],
     "confidence": 0.88
   },
   "labels": {
     "semantic": {
-      "R2_b2b_sales_3y": {"verdict": "partially_met", "score": 0.8, "confidence": 0.85, "info_status": "explicit"},
-      "R3_sales_depth": {"verdict": "met", "score": 0.75, "confidence": 0.85, "info_status": "explicit"},
-      "R6_saas_bonus": {"verdict": "not_met", "confidence": 0.9, "info_status": "explicit"}
+      "R2_b2b_sales_3y": {
+        "verdict": "partially_met",
+        "score": 0.75,
+        "confidence": 0.85,
+        "info_status": "explicit"
+      },
+      "R3_sales_depth": {
+        "verdict": "met",
+        "score": 0.75,
+        "confidence": 0.85,
+        "info_status": "explicit"
+      },
+      "R6_saas_bonus": {
+        "verdict": "not_met",
+        "confidence": 0.9,
+        "info_status": "explicit"
+      }
     },
     "expected_deterministic": {
       "R1_experience_floor": "not_met",
@@ -43,7 +84,9 @@
       "R7_job_hopping": "not_met"
     },
     "gate": "fail",
-    "knockout_reqs": ["R1_experience_floor"],
+    "knockout_reqs": [
+      "R1_experience_floor"
+    ],
     "borderline": true
   }
 }

@@ -64,7 +64,7 @@
       },
       "R3_sales_depth": {
         "verdict": "met",
-        "score": 0.85,
+        "score": 0.75,
         "confidence": 0.9,
         "info_status": "explicit"
       },
@@ -82,10 +82,10 @@
     },
     "gate": "pass",
     "needs_review": false,
-    "band": "top",
+    "band": "strong",
     "score_range": [
-      86.4,
-      86.4
+      79.7,
+      79.7
     ]
   }
 }

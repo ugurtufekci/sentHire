@@ -206,6 +206,15 @@ export interface RunStatus {
     deep_analyzed?: number;
     ranked?: number;
     error?: string;
+    /** Per-criterion: how many distinct levels it produced across the cohort. */
+    consistency?: {
+      req_id: string;
+      label: string;
+      distinct_levels: number;
+      levels?: number[];
+      unknown: number;
+      flag: "no_discrimination" | "mostly_unknown" | "all_unknown" | null;
+    }[];
     batch?: Record<
       "light" | "deep",
       { id: string; submitted: number; polls?: number; status?: string } | undefined
@@ -227,6 +236,9 @@ export interface RunStatus {
 }
 
 export interface ResultRow {
+  /** Candidates sharing a group scored within a point of each other —
+   *  the ranking orders them, but the difference is not a finding. */
+  equivalent_group?: number;
   application_id: string;
   candidate: { id: string | null; display_name: string | null };
   rank: number | null;
@@ -267,6 +279,8 @@ export interface RequirementRow {
   evidence: { quote: string; page?: number | null }[];
   source_stage: string | null;
   borderline: boolean;
+  /** Which rung of the requirement's ladder this score sits on. */
+  level_label?: string | null;
 }
 
 export interface ResultDocument {

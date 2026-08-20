@@ -33,10 +33,24 @@ class DeterministicCheck(BaseModel):
     penalty_points: float | None = None  # only for type=penalty
 
 
+class RubricAnchor(BaseModel):
+    """One rung of a requirement's scale, with the evidence that earns it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    score: float = Field(ge=0.0, le=1.0)
+    label: dict[str, str] = {}
+    definition: str
+
+
 class SemanticCheck(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     rubric: str
+    # The ladder this requirement is judged on. Empty means the default ladder
+    # (senthire.domain.anchors) — every semantic requirement is anchored, so
+    # comparability never depends on the compiler having been thorough.
+    anchors: list[RubricAnchor] = []
     target_field: str | None = None
 
 

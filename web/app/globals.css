@@ -452,3 +452,8 @@ button { font: inherit; }
 .calib-fill { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
 @media (prefers-reduced-motion: no-preference) { .calib-fill { transition: width 400ms ease; } }
 @media (max-width: 640px) { .calib-row { grid-template-columns: 60px 1fr; } .calib-row .tiny { grid-column: 2; } }
+
+/* ---------- equivalent scores ---------- */
+.tie-mark {
+  margin-left: 4px; color: var(--muted); font-size: 12px; cursor: help;
+}

@@ -21,6 +21,45 @@ from senthire.evals.runner import run_case, run_case_live
 
 DEFAULT_ROOT = Path("goldens/cases")
 
+
+def repin(cases, root: Path) -> int:
+    """Re-record the pinned scores after an intentional scoring change.
+
+    Pins are regression guards, not truth (docs/13 §6): they exist so that an
+    unintended movement fails the build. When the movement *is* intended, the
+    honest workflow is to re-pin and read the diff — which is what this prints,
+    old value beside new, so the change gets looked at rather than accepted.
+    """
+    from senthire.evals.runner import run_case
+
+    changed = 0
+    for case in cases:
+        report = run_case(case)
+        outcomes = {o.golden_id: o for o in report.outcomes}
+        for candidate in case.candidates:
+            outcome = outcomes[candidate.golden_id]
+            path = root / case.name / "candidates" / f"{candidate.golden_id}.json"
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            labels = payload.get("labels", {})
+            before = (labels.get("band"), labels.get("score_range"))
+            after = (outcome.result.band, [outcome.result.final_score, outcome.result.final_score])
+            if before[0] is None and before[1] is None:
+                continue  # this candidate was never pinned; leave it unpinned
+            if before[0] == after[0] and before[1] == after[1]:
+                continue
+            labels["band"], labels["score_range"] = after
+            payload["labels"] = labels
+            path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+            )
+            changed += 1
+            print(
+                f"  {case.name}/{candidate.golden_id}: "
+                f"{before[0]} {before[1]} → {after[0]} {after[1]}"
+            )
+    print(f"\nre-pinned {changed} candidate(s). Read the diff before committing it.")
+    return 0
+
 OK = "✓"
 BAD = "✗"
 
@@ -32,7 +71,15 @@ def main() -> int:
     parser.add_argument("--live", action="store_true", help="also grade the real model")
     parser.add_argument("--min-agreement", type=float, default=0.85)
     parser.add_argument("--json", type=Path, default=None, help="write a JSON report")
+    parser.add_argument(
+        "--repin",
+        action="store_true",
+        help="rewrite pinned band/score_range from what the pipeline computes now",
+    )
     args = parser.parse_args()
+
+    if args.repin:
+        return repin(load_cases(args.root, only=args.case), args.root)
 
     cases = load_cases(args.root, only=args.case)
     failed = False

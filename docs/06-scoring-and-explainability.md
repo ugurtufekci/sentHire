@@ -19,6 +19,56 @@ info_status ∈ {explicit, inferred, ambiguous, missing}
 evidence[] (quotes + spans)
 ```
 
+## 2a. The scale is a ladder, not a feeling (shipped)
+
+Ask a model for "0..1 satisfaction" and it will answer 0.72 for one candidate
+and 0.68 for the next. Neither is wrong and the difference between them is
+nothing — sampling noise wearing three digits. Rank ten candidates that way and
+part of the order is arbitrary, which is precisely what this product claims not
+to do.
+
+So every semantic requirement is judged on **anchored rungs**. The default
+ladder is quarters — *tam karşılıyor / büyük ölçüde / yarı yarıya / zayıf /
+karşılamıyor* — and the compiler may emit a requirement-specific ladder whose
+rungs carry their own definitions ("5+ yıl", "3–5 yıl", "3 yıldan az"). The
+model is shown the ladder and asked to pick the rung whose definition matches
+the evidence; the code then snaps whatever number came back onto that ladder
+(`senthire/domain/anchors.py`), with ties rounding **down** — rounding people
+up quietly is how a screening system starts flattering everybody.
+
+Three consequences, all intended:
+
+- two candidates on the same rung score identically on that requirement, so a
+  difference in the final score always traces to a difference in a rung;
+- re-running a job cannot move a score by a hair, because a hair is not a rung;
+- "why 82 and not 79?" has an answer a person can read, and the UI shows the
+  rung's own words next to the number.
+
+Deterministic verdicts are **not** snapped: they are computed exactly, including
+the partial credit a borderline tolerance grants, and rounding arithmetic onto
+a judgment ladder would discard real information.
+
+### Equivalent scores
+
+The smallest difference a judgment can produce is one rung (0.25) in the
+lightest category a spec usually carries (weight 0.15) — 3.75 points. Anything
+under a point is renormalization and confidence damping: arithmetic residue,
+not a finding. Candidates that close together are marked **equivalent** in the
+ranking (a quiet ≈ beside the rank) instead of being presented as 4th and 5th,
+because telling a recruiter that 80.5 beats 79.7 is telling them something
+untrue. The ordering itself is unchanged — someone still has to be listed
+first — the display simply stops claiming a difference it cannot support.
+
+### Which criteria did any work
+
+When a run completes, each semantic requirement is checked against the whole
+cohort: how many distinct rungs did it produce? A criterion that lands every
+candidate on the same rung is not screening anybody — either the pool is
+genuinely uniform on it or, far more often, the criterion is too vague or too
+easy — and it is carrying weight either way. The run page says so
+("hiçbir adayı ayırt etmedi"), as it does for criteria where most CVs simply
+had no information.
+
 ## 2. The scoring algorithm
 
 ```text

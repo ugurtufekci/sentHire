@@ -18,8 +18,10 @@ Rules:
 2. info_status: "explicit" = stated in the profile; "inferred" = strongly supported
    conclusion (say so in reasoning); "ambiguous" = conflicting/unclear; "missing" = not
    present (pairs with verdict "unknown").
-3. score: graded satisfaction 0..1 following each requirement's rubric (full/partial/none
-   guidance). null when verdict is "unknown".
+3. score: pick the rung of that requirement's `scale` whose "means" matches the
+   evidence, and return exactly that rung's number. Do not invent values between
+   rungs — a score is a level, not a feeling, and two candidates on the same level
+   must receive the same number. null when verdict is "unknown".
 4. confidence: your honest 0..1. Low confidence on a heavy requirement routes the
    candidate to a deeper review — honesty is cheaper than bravado.
 5. NEVER use or infer protected characteristics (age, gender, ethnicity, nationality,

@@ -1,11 +1,14 @@
 {
+  "note": "Orderings are only asserted where the gap is larger than a rung of a requirement's ladder. c04 (location unstated) and c08 (English unstated) land within a point of each other and are deliberately NOT ordered: which of two near-identical candidates comes 4th is decided by arithmetic residue, and pinning it would make the suite defend a number instead of a judgment.",
   "as_of": "2026-08-01",
   "top_k": 3,
-  "expected_top": ["c01-strong-match", "c01b-formatting-variant", "c08-english-missing"],
+  "expected_top": ["c01-strong-match", "c01b-formatting-variant"],
   "expected_order_pairs": [
+    ["c01-strong-match", "c04-location-missing"],
     ["c01-strong-match", "c05-job-hopper"],
+    ["c04-location-missing", "c05-job-hopper"],
     ["c05-job-hopper", "c07-b2b-unverified"],
-    ["c04-location-missing", "c07-b2b-unverified"]
+    ["c08-english-missing", "c07-b2b-unverified"]
   ],
   "fairness_pairs": [
     ["c01-strong-match", "c01b-formatting-variant"]

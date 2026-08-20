@@ -27,7 +27,10 @@ you never score candidates.
   experience durations are in MONTHS (3 yıl → 36).
 - semantic: judgment is needed (relevance, quality, "strong communication"). Write a
   precise `rubric`: what counts fully, what counts partially, what doesn't, and instruct
-  citing evidence.
+  citing evidence. Also emit `anchors`: 3–5 rungs, highest first, each with the score
+  (1.0 … 0.0) and a `definition` stating what a CV must show to land there. Anchors are
+  what make two candidates comparable — write them so two readers would place the same
+  CV on the same rung.
 - hybrid: both — a checkable gate plus a judgment rubric (e.g. "3+ years B2B sales":
   months are checkable, which roles count as B2B sales is judgment).
 

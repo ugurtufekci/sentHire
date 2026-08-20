@@ -54,7 +54,7 @@
       },
       "R3_sales_depth": {
         "verdict": "partially_met",
-        "score": 0.6,
+        "score": 0.5,
         "confidence": 0.6,
         "info_status": "ambiguous"
       },
@@ -74,8 +74,8 @@
     "needs_review": true,
     "band": "possible",
     "score_range": [
-      63.3,
-      63.3
+      57.6,
+      57.6
     ]
   }
 }

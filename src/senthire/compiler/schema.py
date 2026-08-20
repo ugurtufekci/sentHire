@@ -43,6 +43,12 @@ class DraftCondition(_Strict):
         return self.value_text
 
 
+class DraftAnchor(_Strict):
+    score: float  # 0..1
+    label_tr: str
+    definition: str  # what a CV must show to land on this rung
+
+
 class DraftRequirement(_Strict):
     req_id: str  # short snake_case slug, e.g. "R1_b2b_sales_3y"
     category: Literal[
@@ -67,6 +73,9 @@ class DraftRequirement(_Strict):
     bonus_points: float | None = None
     missing_policy: MissingPolicy = "unknown"
     rubric: str | None = None  # required for semantic/hybrid
+    # The rungs this requirement is judged on. 3–5 of them, highest first.
+    # Omitted → the default ladder (senthire.domain.anchors).
+    anchors: list[DraftAnchor] = []
     clarification_question: str | None = None
     clarification_default: str | None = None
     absorbs_template_req_ids: list[str] = []

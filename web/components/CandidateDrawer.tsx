@@ -236,8 +236,9 @@ export default function CandidateDrawer({
                     </div>
                     <div className="tiny">
                       {VERDICT_LABEL[r.verdict]}
+                      {r.level_label && r.verdict !== "unknown" ? ` · ${r.level_label}` : ""}
                       {r.score != null && r.verdict !== "unknown"
-                        ? ` · puan ${Math.round(r.score * 100)}/100`
+                        ? ` (${Math.round(r.score * 100)}/100)`
                         : ""}
                       {` · güven ${confidenceLabel(r.confidence)}`}
                     </div>

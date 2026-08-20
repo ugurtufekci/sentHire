@@ -17,6 +17,36 @@ import type { ResultRow, ResultsResponse, RunStatus } from "@/lib/types";
 
 const ACTIVE_PHASES = ["queued", "screening", "selecting", "deep_analysis", "scoring"];
 
+const CRITERION_FLAG_LABEL: Record<string, string> = {
+  no_discrimination:
+    "hiçbir adayı ayırt etmedi — herkes aynı seviyede çıktı, kriter fazla genel olabilir",
+  mostly_unknown: "adayların çoğunda CV'de bilgi yoktu — puanlamaya girmedi",
+  all_unknown: "hiçbir adayda bilgi bulunamadı",
+};
+
+/** Which criteria did any work. A requirement carrying weight while landing
+ *  every candidate on the same rung is spending budget on nothing. */
+function CriteriaNotes({
+  rows,
+}: {
+  rows: NonNullable<import("@/lib/types").RunStatus["funnel"]["consistency"]>;
+}) {
+  const flagged = rows.filter((r) => r.flag);
+  if (flagged.length === 0) return null;
+  return (
+    <div className="card quiet" style={{ marginBottom: 16 }}>
+      <span className="field-label">Kriterler hakkında</span>
+      <ul className="stack" style={{ gap: 4, margin: 0, paddingLeft: 18 }}>
+        {flagged.map((row) => (
+          <li key={row.req_id} className="tiny">
+            <strong>{row.label}</strong> — {CRITERION_FLAG_LABEL[row.flag!] ?? row.flag}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function RunPage() {
   const params = useParams<{ runId: string }>();
   const runId = params.runId;
@@ -146,6 +176,10 @@ export default function RunPage() {
         </div>
       )}
 
+      {run?.status === "complete" && (run.funnel.consistency?.length ?? 0) > 0 && (
+        <CriteriaNotes rows={run.funnel.consistency!} />
+      )}
+
       {results && run?.status === "complete" && results.results.length > 0 && (
         <div className="notice accent" style={{ marginBottom: 16 }}>
           Beğendiğiniz adayları görüşme sürecine taşıyın —{" "}
@@ -182,9 +216,26 @@ export default function RunPage() {
                       </td>
                     </tr>
                   )}
-                  {results.results.map((r) => (
+                  {results.results.map((r, index) => {
+                    const tiedAbove =
+                      index > 0 &&
+                      results.results[index - 1].equivalent_group === r.equivalent_group;
+                    const tiedBelow =
+                      index < results.results.length - 1 &&
+                      results.results[index + 1].equivalent_group === r.equivalent_group;
+                    return (
                     <tr key={r.application_id} className="row-hover" onClick={() => setOpen(r)}>
-                      <td className="mono">{r.rank}</td>
+                      <td className="mono">
+                        {r.rank}
+                        {(tiedAbove || tiedBelow) && (
+                          <span
+                            className="tie-mark"
+                            title="Bu adaylar birbirinden ayırt edilecek kadar farklı puan almadı"
+                          >
+                            ≈
+                          </span>
+                        )}
+                      </td>
                       <td>
                         {r.candidate.display_name ?? "İsimsiz aday"}
                         {r.needs_review && (
@@ -204,7 +255,8 @@ export default function RunPage() {
                         {r.headline.strengths.slice(0, 2).join(" · ") || "—"}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -91,9 +91,13 @@ in that order.
    usage into accuracy nobody can bootstrap without the installed base — and
    every correction is a labeled example the corpus can harvest
    ([doc 13 §8](13-corpus-and-labeling.md)).
-4. **Comparability guarantees.** Rubric anchors and cross-candidate
-   consistency checks, so "82 vs 79" carries meaning within a run and across
-   re-runs — the thing hardest to fake with ad-hoc prompting.
+4. **Comparability guarantees.** *(shipped — [doc 06 §2a](06-scoring-and-explainability.md))*
+   Judged scores land on anchored rungs rather than freehand decimals, scores
+   within a point of each other are shown as equivalent instead of ranked, and
+   every run reports which criteria actually separated candidates. "82 vs 79"
+   now traces to a rung a person can read — the thing hardest to fake with
+   ad-hoc prompting, because it requires the scoring to be code rather than
+   vibes.
 5. **Workflow depth.** Automatic interview e-mails to positive candidates
    (mail infra is live), scheduling hooks, exports that HR actually files.
    Each step moves us from "tool you try" to "system your hiring runs on".
