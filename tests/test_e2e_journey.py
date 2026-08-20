@@ -1274,3 +1274,180 @@ def test_bad_corrections_are_refused(client, new_client, storage_stub, fake_mode
     assert outsider.post(
         f"{base}/R1_experience/override", json={"verdict": "met"}
     ).status_code == 404
+
+
+# --------------------------------------------------------------------------- #
+# 10. Insights: what the workspace's own decisions say about its screening
+# --------------------------------------------------------------------------- #
+
+
+def _seed_scored_candidates(job_id: str, org_id: str, rows: list[tuple[float, str]]) -> str:
+    """Insert scored applications at given pipeline stages, bypassing the funnel.
+
+    The statistics under test are about accumulated outcomes, not about
+    screening; driving twelve CVs through the pipeline to produce them would
+    test the funnel again and say nothing new about the arithmetic.
+    """
+    import hashlib
+    import uuid as _uuid
+    from datetime import UTC, datetime
+
+    from senthire.db.models import (
+        Application,
+        Candidate,
+        Document,
+        Evaluation,
+        EvaluationSpecRow,
+        ScreeningRun,
+    )
+    from senthire.db.session import get_sessionmaker
+
+    session = get_sessionmaker()()
+    org = _uuid.UUID(org_id)
+    job = _uuid.UUID(job_id)
+    spec = EvaluationSpecRow(
+        org_id=org, job_id=job, version=1, status="confirmed",
+        spec={
+            "schema_version": "1.0", "version": 1, "weights": {"skills": 1.0},
+            "requirements": [
+                {
+                    "req_id": "R_deneyim", "category": "skills",
+                    "label": {"tr": "Alan deneyimi"}, "type": "hard",
+                    "importance": "critical", "evaluator": "semantic",
+                    "semantic": {"rubric": "…"},
+                }
+            ],
+        },
+    )
+    session.add(spec)
+    session.flush()
+    run = ScreeningRun(
+        org_id=org, job_id=job, spec_id=spec.id, mode="interactive", status="complete",
+        started_at=datetime.now(UTC), finished_at=datetime.now(UTC),
+    )
+    session.add(run)
+    session.flush()
+
+    for index, (score, stage) in enumerate(rows):
+        candidate = Candidate(org_id=org, display_name=f"Aday {index}", identity_keys=[])
+        session.add(candidate)
+        session.flush()
+        document = Document(
+            org_id=org, upload_job_id=job, candidate_id=candidate.id,
+            s3_key=f"seed/{candidate.id}", original_filename=f"{index}.pdf",
+            mime="application/pdf", size_bytes=1,
+            sha256=hashlib.sha256(str(candidate.id).encode()).hexdigest(),
+            parse_status="parsed",
+        )
+        session.add(document)
+        session.flush()
+        application = Application(
+            org_id=org, job_id=job, candidate_id=candidate.id,
+            document_id=document.id, status="screened", stage=stage,
+        )
+        session.add(application)
+        session.flush()
+        session.add(
+            Evaluation(
+                org_id=org, run_id=run.id, application_id=application.id,
+                profile_version=1, spec_version=1, pipeline_version="v1",
+                stage_reached="light", hard_result="pass", overall_score=score,
+                rank=index + 1, band="strong", confidence=0.9,
+                result={"final_score": score, "requirements": [], "verdicts": {}},
+            )
+        )
+    session.commit()
+    session.close()
+    return str(run.id)
+
+
+def test_insights_report_the_threshold_the_workspace_actually_uses(client):
+    org_id = client.get("/api/v1/auth/me").json()["org"]["id"]
+    job_id = client.post(
+        "/api/v1/jobs", json={"title": "İçgörü Testi A", "template_slug": None}
+    ).json()["id"]
+    # Twelve candidates: the ones actually pursued all scored 76 or better.
+    _seed_scored_candidates(
+        job_id,
+        org_id,
+        [
+            (95.0, "hired"), (92.0, "offer"), (88.0, "interviewing"), (86.0, "interviewing"),
+            (84.0, "contacted"), (81.0, "contacted"), (79.0, "contacted"), (76.0, "contacted"),
+            (72.0, "shortlisted"), (65.0, "new"), (58.0, "new"), (51.0, "dropped"),
+        ],
+    )
+
+    body = client.get(f"/api/v1/jobs/{job_id}/insights").json()
+    calibration = body["calibration"]
+    assert calibration["sample_size"] == 12
+    assert calibration["advanced"] == 8
+    assert calibration["working_threshold"] == 76.0
+
+    top = next(b for b in calibration["buckets"] if b["from"] == 90)
+    assert (top["count"], top["advanced"], top["hired"]) == (2, 2, 1)
+    assert top["advance_rate"] == 1.0
+
+    threshold_insight = next(i for i in body["insights"] if i["kind"] == "working_threshold")
+    assert "76" in threshold_insight["message_tr"]
+
+
+def test_insights_stay_quiet_on_a_small_sample(client):
+    org_id = client.get("/api/v1/auth/me").json()["org"]["id"]
+    job_id = client.post(
+        "/api/v1/jobs", json={"title": "İçgörü Testi B", "template_slug": None}
+    ).json()["id"]
+    _seed_scored_candidates(job_id, org_id, [(91.0, "hired"), (70.0, "new")])
+
+    body = client.get(f"/api/v1/jobs/{job_id}/insights").json()
+    assert body["calibration"]["working_threshold"] is None, (
+        "two candidates cannot establish a threshold — saying so would be the "
+        "plausible-but-wrong answer this product exists to avoid"
+    )
+    assert not [i for i in body["insights"] if i["kind"] == "working_threshold"]
+
+
+def test_insights_flag_a_requirement_that_keeps_being_corrected(client):
+    org_id = client.get("/api/v1/auth/me").json()["org"]["id"]
+    job_id = client.post(
+        "/api/v1/jobs", json={"title": "İçgörü Testi C", "template_slug": None}
+    ).json()["id"]
+    run_id = _seed_scored_candidates(job_id, org_id, [(80.0, "new")] * 10)
+
+    results = client.get(f"/api/v1/runs/{run_id}/results").json()["results"]
+    for row in results[:3]:
+        posted = client.post(
+            f"/api/v1/runs/{run_id}/results/{row['application_id']}"
+            "/requirements/R_deneyim/override",
+            json={"verdict": "met", "reason": "sektör deneyimi sayılmalı"},
+        )
+        assert posted.status_code == 200, posted.text
+
+    body = client.get(f"/api/v1/jobs/{job_id}/insights").json()
+    corrections = body["corrections"]
+    assert corrections["sample_size"] == 10
+    row = corrections["requirements"][0]
+    assert (row["req_id"], row["corrected"], row["rate"]) == ("R_deneyim", 3, 0.3)
+
+    flagged = next(i for i in body["insights"] if i["kind"] == "correction_rate")
+    assert "%30" in flagged["message_tr"]
+    assert flagged["severity"] == "notable"
+
+
+def test_insights_are_tenant_scoped(client, new_client):
+    org_id = client.get("/api/v1/auth/me").json()["org"]["id"]
+    job_id = client.post(
+        "/api/v1/jobs", json={"title": "İçgörü Testi D", "template_slug": None}
+    ).json()["id"]
+    _seed_scored_candidates(job_id, org_id, [(90.0, "hired")])
+
+    outsider = new_client()
+    outsider.post(
+        "/api/v1/auth/signup",
+        json={
+            "company_name": "Üçüncü Şirket",
+            "name": "Can Tekin",
+            "email": "can@ucuncu-sirket.com",
+            "password": "guclu-parola-321",
+        },
+    )
+    assert outsider.get(f"/api/v1/jobs/{job_id}/insights").status_code == 404

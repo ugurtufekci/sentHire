@@ -75,6 +75,12 @@ evidence (or the absence) behind it — "why was X rejected" is never unanswerab
 
 ## 6. Human control: overrides & review queue
 
+*(Shipped: per-requirement corrections in the results drawer. "Katılmıyorum —
+düzelt" on any requirement records the human verdict, and the same
+deterministic scorer re-runs — so a correction can reopen or close the gate,
+the score stays explainable, and the run is re-ranked. The correction history,
+with both verdicts and the reason, rides along in the result document.)*
+
 - Any candidate can be promoted to shortlist or rejected regardless of AI output —
   one click + optional reason; recorded in the audit trail and shown as a human badge
   on the card.
@@ -120,6 +126,12 @@ Screening ends with a ranked list; the hiring work continues for weeks. The boar
   and contacts with a positive/negative outcome, plus the full event history.
 - **Agenda**: the home page lists upcoming and overdue next actions across all jobs
   ("Yaklaşan adımlar"), so nothing owed to a candidate silently expires.
+- **Öğrenilenler panel**: below the board, what this job's own decisions say
+  about its screening — a requirement corrected in a fifth of candidates is
+  flagged as a probably-too-narrow criterion, and the score at which four in
+  five pursued candidates sit is reported as the workspace's *working*
+  shortlist threshold. Every figure carries its sample size, and weak evidence
+  stays silent rather than dressing noise as insight.
 - Planned next: automatic interview e-mails to candidates marked positive (the
   mail infrastructure from invitations/password resets is already in place).
 

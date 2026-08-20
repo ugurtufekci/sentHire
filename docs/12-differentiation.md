@@ -82,11 +82,15 @@ in that order.
    per alias, feeding both predicates and prompts, and improvable without
    re-parsing a single CV. This is unglamorous accumulation, which is exactly
    why it defends: a chatbot re-derives it, badly, on every conversation.
-3. **Outcome feedback loop.** The hiring pipeline is not just UX — it captures
-   ground truth: which 80+ scores actually got interviews, offers, hires.
-   Per-org and per-vertical calibration ("your 75+ candidates accept offers;
-   your spec overweights location") turns usage into accuracy nobody can
-   bootstrap without the installed base. Overrides already feed the same loop.
+3. **Outcome feedback loop.** *(collection shipped; calibration in progress)*
+   The hiring pipeline is not just UX — it captures ground truth: which 80+
+   scores actually got interviews, offers, hires. Verdict corrections are now
+   recorded with both verdicts and a reason, and the per-job Öğrenilenler panel
+   already reports the workspace's *working* threshold and flags criteria that
+   keep being corrected. Per-vertical calibration on top of that data turns
+   usage into accuracy nobody can bootstrap without the installed base — and
+   every correction is a labeled example the corpus can harvest
+   ([doc 13 §8](13-corpus-and-labeling.md)).
 4. **Comparability guarantees.** Rubric anchors and cross-candidate
    consistency checks, so "82 vs 79" carries meaning within a run and across
    re-runs — the thing hardest to fake with ad-hoc prompting.

@@ -20,10 +20,14 @@ from senthire.db.models import (
     Application,
     Candidate,
     Evaluation,
+    EvaluationSpecRow,
     Job,
     PipelineEvent,
+    ScreeningRun,
     User,
 )
+from senthire.domain.spec import EvaluationSpec
+from senthire.services import insights as insight_service
 
 router = APIRouter(tags=["pipeline"])
 
@@ -376,4 +380,38 @@ def agenda(
             }
             for a in apps
         ]
+    }
+
+
+@router.get("/jobs/{job_id}/insights")
+def job_insights(
+    job_id: str,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> dict:
+    """What this job's own corrections and outcomes say about its screening."""
+    job = session.get(Job, parse_uuid(job_id, "job_id"))
+    if job is None or job.org_id != user.org_id:
+        raise HTTPException(status_code=404, detail="job not found")
+
+    spec = None
+    run = session.scalars(
+        select(ScreeningRun)
+        .where(ScreeningRun.job_id == job.id, ScreeningRun.status == "complete")
+        .order_by(ScreeningRun.started_at.desc())
+        .limit(1)
+    ).first()
+    if run is not None:
+        spec_row = session.get(EvaluationSpecRow, run.spec_id)
+        if spec_row is not None:
+            spec = EvaluationSpec.model_validate(spec_row.spec)
+
+    corrections = insight_service.correction_patterns(session, job, spec)
+    calibration = insight_service.outcome_calibration(session, job)
+    return {
+        "job_id": str(job.id),
+        "corrections": corrections,
+        "calibration": calibration,
+        "insights": insight_service.summarize(corrections, calibration),
+        "min_sample": insight_service.MIN_SAMPLE_FOR_RATE,
     }

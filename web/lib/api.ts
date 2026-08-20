@@ -6,6 +6,7 @@ import type {
   CheckoutResponse,
   InvitationLookup,
   Job,
+  JobInsights,
   Me,
   Member,
   OrgInfo,
@@ -251,4 +252,5 @@ export const api = {
   timeline: (applicationId: string) =>
     request<TimelineResponse>(`/applications/${applicationId}/timeline`),
   agenda: () => request<{ items: AgendaItem[] }>("/pipeline/agenda"),
+  jobInsights: (jobId: string) => request<JobInsights>(`/jobs/${jobId}/insights`),
 };

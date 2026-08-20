@@ -382,3 +382,33 @@ export interface AgendaItem {
   next_action_at: string;
   overdue: boolean;
 }
+
+export interface JobInsights {
+  job_id: string;
+  corrections: {
+    sample_size: number;
+    requirements: {
+      req_id: string;
+      label: string;
+      corrected: number;
+      rate: number | null;
+      directions: Record<string, number>;
+    }[];
+  };
+  calibration: {
+    sample_size: number;
+    advanced: number;
+    working_threshold: number | null;
+    buckets: {
+      from: number | null;
+      to: number | null;
+      count: number;
+      advanced: number;
+      hired: number;
+      dropped: number;
+      advance_rate: number;
+    }[];
+  };
+  insights: { kind: string; severity: "info" | "notable"; message_tr: string; detail: unknown }[];
+  min_sample: number;
+}

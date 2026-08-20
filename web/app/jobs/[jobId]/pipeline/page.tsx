@@ -21,6 +21,7 @@ import {
   scoreText,
 } from "@/lib/format";
 import type {
+  JobInsights,
   PipelineBoard,
   PipelineCard,
   PipelineStage,
@@ -42,6 +43,7 @@ export default function PipelinePage({ params }: { params: Promise<{ jobId: stri
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
+  const [insights, setInsights] = useState<JobInsights | null>(null);
 
   const reload = useCallback(() => {
     api
@@ -51,6 +53,12 @@ export default function PipelinePage({ params }: { params: Promise<{ jobId: stri
         setError(null);
       })
       .catch((e: ApiError) => setError(e.message));
+    // Learned-from-outcomes panel: informative, never load-bearing, so a
+    // failure here must not take the board down with it.
+    api
+      .jobInsights(jobId)
+      .then(setInsights)
+      .catch(() => setInsights(null));
   }, [jobId]);
 
   useEffect(reload, [reload]);
@@ -295,6 +303,8 @@ export default function PipelinePage({ params }: { params: Promise<{ jobId: stri
         </div>
       </div>
 
+      {insights && <InsightsPanel insights={insights} />}
+
       {drawerId && (
         <CandidateDrawer
           applicationId={drawerId}
@@ -309,6 +319,66 @@ export default function PipelinePage({ params }: { params: Promise<{ jobId: stri
 }
 
 /* ------------------------------------------------------------------------- */
+
+function bucketLabel(from: number | null, to: number | null): string {
+  if (from == null) return `${to} altı`;
+  if (to == null) return `${from}+`;
+  return `${from}–${to - 1}`;
+}
+
+/** What this job's own corrections and outcomes say about its screening.
+ *  Silent until there is enough evidence to be worth reading. */
+function InsightsPanel({ insights }: { insights: JobInsights }) {
+  const { calibration, insights: lines, min_sample: minSample } = insights;
+  const hasBuckets = calibration.buckets.some((b) => b.advanced > 0);
+  if (lines.length === 0 && !hasBuckets) return null;
+
+  return (
+    <section className="card" style={{ marginTop: 28 }}>
+      <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 10 }}>
+        <strong>Bu ilanda öğrendiklerimiz</strong>
+        <span className="tiny">{calibration.sample_size} aday üzerinden</span>
+      </div>
+
+      {lines.map((line, index) => (
+        <div
+          key={index}
+          className={`notice ${line.severity === "notable" ? "warn" : "accent"}`}
+          style={{ marginBottom: 8 }}
+        >
+          {line.message_tr}
+        </div>
+      ))}
+
+      {hasBuckets && (
+        <div className="stack" style={{ gap: 4, marginTop: 12 }}>
+          <span className="field-label">Puana göre süreç ilerleyişi</span>
+          {calibration.buckets.map((bucket) => (
+            <div key={`${bucket.from}-${bucket.to}`} className="calib-row">
+              <span className="calib-band mono">{bucketLabel(bucket.from, bucket.to)}</span>
+              <span className="calib-track">
+                <span
+                  className="calib-fill"
+                  style={{ width: `${Math.round(bucket.advance_rate * 100)}%` }}
+                />
+              </span>
+              <span className="tiny">
+                {bucket.advanced}/{bucket.count} temas
+                {bucket.hired > 0 && ` · ${bucket.hired} işe alım`}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {calibration.sample_size < minSample && (
+        <p className="tiny" style={{ marginTop: 10 }}>
+          Henüz az veri var — bu sayılar ilan ilerledikçe anlamlanır.
+        </p>
+      )}
+    </section>
+  );
+}
 
 function CandidateDrawer({
   applicationId,
