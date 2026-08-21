@@ -26,6 +26,9 @@ dependencies = [
 dev = [
     "pytest>=8.2",
     "ruff>=0.5",
+    # starlette's TestClient prefers httpx2; without it every test run opens
+    # with a deprecation warning, and a warning wall is where real ones hide.
+    "httpx2>=2.0",
 ]
 
 [build-system]
