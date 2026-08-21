@@ -8,6 +8,7 @@ from senthire.api.routes import (
     candidates,
     health,
     jobs,
+    outreach,
     pipeline,
     requirements,
     runs,
@@ -38,6 +39,7 @@ def create_app() -> FastAPI:
     app.include_router(requirements.router, prefix=prefix)
     app.include_router(runs.router, prefix=prefix)
     app.include_router(pipeline.router, prefix=prefix)
+    app.include_router(outreach.router, prefix=prefix)
     if get_settings().storage_backend == "local":
         # Only mounted when there is no object store to talk to (see the
         # module docstring for why this is not a production path).

@@ -11,6 +11,7 @@
 
 import Link from "next/link";
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import MessageComposer from "@/components/MessageComposer";
 import { api, ApiError } from "@/lib/api";
 import {
   bandClass,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/format";
 import type {
   JobInsights,
+  SentMessage,
   PipelineBoard,
   PipelineCard,
   PipelineStage,
@@ -44,6 +46,7 @@ export default function PipelinePage({ params }: { params: Promise<{ jobId: stri
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
   const [insights, setInsights] = useState<JobInsights | null>(null);
+  const [composing, setComposing] = useState<{ ids: string[]; title: string } | null>(null);
 
   const reload = useCallback(() => {
     api
@@ -185,6 +188,18 @@ export default function PipelinePage({ params }: { params: Promise<{ jobId: stri
             </button>
             <span className="spacer" style={{ marginLeft: "auto" }} />
             <button
+              className="btn"
+              disabled={selected.size === 0}
+              onClick={() =>
+                setComposing({
+                  ids: [...selected],
+                  title: `${selected.size} adaya mesaj`,
+                })
+              }
+            >
+              Mesaj yaz{selected.size > 0 ? ` (${selected.size})` : ""}
+            </button>
+            <button
               className="btn btn-primary"
               disabled={selected.size === 0 || moving}
               onClick={shortlistSelected}
@@ -265,7 +280,26 @@ export default function PipelinePage({ params }: { params: Promise<{ jobId: stri
             >
               <header className="board-col-head">
                 <span>{PIPELINE_STAGE_LABEL[stage]}</span>
-                <span className="board-count">{board.columns[stage]?.length ?? 0}</span>
+                <span className="hstack" style={{ gap: 6 }}>
+                  {(board.columns[stage]?.length ?? 0) > 0 && (
+                    <button
+                      className="col-mail"
+                      title={`${PIPELINE_STAGE_LABEL[stage]} aşamasındaki adaylara mesaj yaz`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setComposing({
+                          ids: (board.columns[stage] ?? []).map((c) => c.application_id),
+                          title: `${PIPELINE_STAGE_LABEL[stage]} — ${
+                            board.columns[stage]?.length ?? 0
+                          } adaya mesaj`,
+                        });
+                      }}
+                    >
+                      ✉
+                    </button>
+                  )}
+                  <span className="board-count">{board.columns[stage]?.length ?? 0}</span>
+                </span>
               </header>
               <div className="board-cards">
                 {(board.columns[stage] ?? []).map((c) => (
@@ -305,6 +339,15 @@ export default function PipelinePage({ params }: { params: Promise<{ jobId: stri
 
       {insights && <InsightsPanel insights={insights} />}
 
+      {composing && (
+        <MessageComposer
+          applicationIds={composing.ids}
+          title={composing.title}
+          onClose={() => setComposing(null)}
+          onSent={reload}
+        />
+      )}
+
       {drawerId && (
         <CandidateDrawer
           applicationId={drawerId}
@@ -312,6 +355,10 @@ export default function PipelinePage({ params }: { params: Promise<{ jobId: stri
           stages={board.stages}
           onClose={() => setDrawerId(null)}
           onChanged={reload}
+          onCompose={(id) => {
+            setDrawerId(null);
+            setComposing({ ids: [id], title: "Adaya mesaj" });
+          }}
         />
       )}
     </main>
@@ -386,14 +433,17 @@ function CandidateDrawer({
   stages,
   onClose,
   onChanged,
+  onCompose,
 }: {
   applicationId: string;
   members: { id: string; name: string }[];
   stages: PipelineStage[];
   onClose: () => void;
   onChanged: () => void;
+  onCompose: (applicationId: string) => void;
 }) {
   const [data, setData] = useState<TimelineResponse | null>(null);
+  const [messages, setMessages] = useState<SentMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [actionKind, setActionKind] = useState<"note" | "meeting" | "contact">("note");
   const [note, setNote] = useState("");
@@ -405,6 +455,10 @@ function CandidateDrawer({
   const seeded = useRef(false);
 
   const load = useCallback(() => {
+    api
+      .sentMessages(applicationId)
+      .then((m) => setMessages(m.messages))
+      .catch(() => setMessages([]));
     api
       .timeline(applicationId)
       .then((t) => {
@@ -653,6 +707,34 @@ function CandidateDrawer({
                 )}
               </div>
             </div>
+
+            <hr className="divider" />
+
+            <div className="hstack" style={{ justifyContent: "space-between" }}>
+              <span className="field-label" style={{ marginBottom: 0 }}>
+                Gönderilen mesajlar
+              </span>
+              <button className="btn" onClick={() => onCompose(applicationId)}>
+                Mesaj yaz
+              </button>
+            </div>
+            {messages.length === 0 ? (
+              <p className="tiny" style={{ marginTop: 6 }}>
+                Bu adaya henüz yazılmadı.
+              </p>
+            ) : (
+              <div className="stack" style={{ gap: 6, marginTop: 8 }}>
+                {messages.map((m) => (
+                  <div key={m.id} className="file-row">
+                    <span className="file-name">{m.subject}</span>
+                    <span className="tiny">{formatDate(m.created_at)}</span>
+                    <span className={`chip ${m.status === "failed" ? "bad" : "good"}`}>
+                      {m.status === "failed" ? "gönderilemedi" : "gönderildi"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <hr className="divider" />
 

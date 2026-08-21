@@ -20,19 +20,23 @@ from senthire.workers.celery_app import celery_app
     retry_jitter=True,
     max_retries=6,
 )
-def send_mail(to: str, subject: str, html: str, text: str) -> dict:
-    send_email(to, subject, html, text)
+def send_mail(
+    to: str, subject: str, html: str, text: str, reply_to: str | None = None
+) -> dict:
+    send_email(to, subject, html, text, reply_to=reply_to)
     return {"to": to, "subject": subject}
 
 
-def enqueue_mail(to: str, subject: str, html: str, text: str) -> bool:
+def enqueue_mail(
+    to: str, subject: str, html: str, text: str, reply_to: str | None = None
+) -> bool:
     """Best-effort enqueue from API handlers.
 
     Returns False instead of raising when the broker is unreachable — the
     caller still has the raw link to show, so the request must not fail.
     """
     try:
-        send_mail.delay(to, subject, html, text)
+        send_mail.delay(to, subject, html, text, reply_to)
         return True
     except Exception:
         return False

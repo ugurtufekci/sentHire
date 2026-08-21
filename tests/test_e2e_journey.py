@@ -1708,3 +1708,217 @@ def test_an_erased_candidate_does_not_block_a_new_application(client, fake_model
     session.commit()
     assert fresh.id != erased.id
     session.close()
+
+
+# --------------------------------------------------------------------------- #
+# 12. Writing to candidates
+# --------------------------------------------------------------------------- #
+
+
+@pytest.fixture
+def sent_mail(monkeypatch):
+    """Capture what would leave the building."""
+    outbox: list[dict] = []
+
+    from senthire.services import outreach
+
+    def fake_enqueue(to, subject, html, text, reply_to=None):
+        outbox.append({"to": to, "subject": subject, "text": text, "reply_to": reply_to})
+        return True
+
+    monkeypatch.setattr(outreach, "enqueue_mail", fake_enqueue)
+    return outbox
+
+
+def test_the_workspace_starts_with_usable_templates(client):
+    body = client.get("/api/v1/messages/templates").json()
+    slugs = {t["slug"] for t in body["templates"]}
+    assert {"interview_invite", "rejection", "info_request"} <= slugs
+    assert "aday" in body["variables"]
+    invite = next(t for t in body["templates"] if t["slug"] == "interview_invite")
+    assert "{{aday}}" in invite["body"] and "{{ilan}}" in invite["subject"]
+
+
+def test_a_template_referring_to_a_field_we_cannot_fill_is_refused(client):
+    bad = client.put(
+        "/api/v1/messages/templates/interview_invite",
+        json={"subject": "Merhaba {{isim}}", "body": "…"},
+    )
+    assert bad.status_code == 422
+    assert "isim" in bad.json()["detail"]
+
+
+def test_preview_shows_the_exact_letter_each_candidate_would_receive(
+    client, storage_stub, fake_models
+):
+    job_id = _screened_job(client, storage_stub, "Davet Testi A")
+    board = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()
+    ids = [c["application_id"] for c in board["tray"]]
+    template = next(
+        t
+        for t in client.get("/api/v1/messages/templates").json()["templates"]
+        if t["slug"] == "interview_invite"
+    )
+
+    preview = client.post(
+        "/api/v1/messages/preview",
+        json={
+            "application_ids": ids,
+            "subject": template["subject"],
+            "body": template["body"],
+            "when": "25.08.2026 14:00",
+        },
+    ).json()["messages"]
+
+    assert len(preview) == len(ids)
+    first = preview[0]
+    assert "{{" not in first["subject"] and "{{" not in first["body"]
+    assert first["candidate_name"] in first["body"], "the letter greets the person by name"
+    assert "Davet Testi A" in first["subject"]
+    assert "25.08.2026 14:00" in first["body"]
+    assert "Aksa Teknoloji" in first["body"], "and says which company is writing"
+
+
+def test_sending_records_the_letter_moves_the_card_and_replies_to_a_person(
+    client, storage_stub, fake_models, sent_mail
+):
+    job_id = _screened_job(client, storage_stub, "Davet Testi B")
+    board = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()
+    application_id = board["tray"][0]["application_id"]
+    template = next(
+        t
+        for t in client.get("/api/v1/messages/templates").json()["templates"]
+        if t["slug"] == "interview_invite"
+    )
+
+    result = client.post(
+        "/api/v1/messages/send",
+        json={
+            "application_ids": [application_id],
+            "subject": template["subject"],
+            "body": template["body"],
+            "template_slug": "interview_invite",
+        },
+    ).json()
+    assert result["sent"][0]["status"] == "queued"
+    assert not result["skipped"]
+
+    # the candidate can answer the recruiter, not a no-reply mailbox
+    assert sent_mail[0]["reply_to"] == "ayse@aksatek.com"
+    assert "sentHire" not in sent_mail[0]["text"], "the letter comes from the company"
+
+    # it is on the record, verbatim
+    stored = client.get(f"/api/v1/applications/{application_id}/messages").json()["messages"]
+    assert stored[0]["subject"] == sent_mail[0]["subject"]
+    assert stored[0]["status"] == "queued"
+
+    # ...the card moved, because a board that still says "new" would be lying
+    timeline = client.get(f"/api/v1/applications/{application_id}/timeline").json()
+    assert timeline["stage"] == "contacted"
+    kinds = [e["kind"] for e in timeline["events"]]
+    assert "contact" in kinds and "stage_change" in kinds
+    contact = next(e for e in timeline["events"] if e["kind"] == "contact")
+    assert contact["detail"]["channel"] == "email"
+
+
+def test_writing_to_the_same_person_twice_needs_a_second_answer(
+    client, storage_stub, fake_models, sent_mail
+):
+    job_id = _screened_job(client, storage_stub, "Davet Testi C")
+    application_id = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()["tray"][0][
+        "application_id"
+    ]
+    payload = {
+        "application_ids": [application_id],
+        "subject": "Görüşme daveti",
+        "body": "Merhaba {{aday}}, görüşelim.",
+        "template_slug": "interview_invite",
+    }
+    assert client.post("/api/v1/messages/send", json=payload).json()["sent"]
+
+    again = client.post("/api/v1/messages/send", json=payload).json()
+    assert not again["sent"]
+    assert again["skipped"][0]["needs_confirmation"] is True
+    assert len(sent_mail) == 1, "the second attempt must not reach the candidate"
+
+    forced = client.post(
+        "/api/v1/messages/send", json={**payload, "confirm_resend": True}
+    ).json()
+    assert forced["sent"] and len(sent_mail) == 2
+
+
+def test_a_candidate_without_an_email_is_skipped_with_a_reason(
+    client, storage_stub, fake_models, sent_mail
+):
+    import uuid as _uuid
+
+    from senthire.db.models import Candidate
+    from senthire.db.session import get_sessionmaker
+
+    job_id = _screened_job(client, storage_stub, "Davet Testi D")
+    application_id = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()["tray"][0][
+        "application_id"
+    ]
+    session = get_sessionmaker()()
+    from senthire.db.models import Application
+
+    application = session.get(Application, _uuid.UUID(application_id))
+    candidate = session.get(Candidate, application.candidate_id)
+    candidate.primary_email = None
+    session.commit()
+    session.close()
+
+    result = client.post(
+        "/api/v1/messages/send",
+        json={
+            "application_ids": [application_id],
+            "subject": "Görüşme",
+            "body": "Merhaba {{aday}}",
+            "template_slug": "interview_invite",
+        },
+    ).json()
+    assert not result["sent"]
+    assert "e-posta adresi yok" in result["skipped"][0]["reason"]
+    assert sent_mail == []
+
+
+def test_nothing_is_sent_by_moving_a_card(client, storage_stub, fake_models, sent_mail):
+    """Dragging is not consent to write to someone.
+
+    An automatic email on stage change means one mis-drag reaches a real person
+    with something that cannot be recalled — so the pipeline never sends, ever.
+    """
+    job_id = _screened_job(client, storage_stub, "Davet Testi E")
+    board = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()
+    ids = [c["application_id"] for c in board["tray"]]
+    client.post(f"/api/v1/jobs/{job_id}/pipeline/shortlist", json={"application_ids": ids})
+    for stage in ("contacted", "interviewing", "offer", "hired", "dropped"):
+        client.patch(f"/api/v1/applications/{ids[0]}/stage", json={"stage": stage})
+    assert sent_mail == []
+
+
+def test_outreach_is_tenant_scoped(client, new_client, storage_stub, fake_models, sent_mail):
+    job_id = _screened_job(client, storage_stub, "Davet Testi F")
+    application_id = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()["tray"][0][
+        "application_id"
+    ]
+    outsider = new_client()
+    outsider.post(
+        "/api/v1/auth/signup",
+        json={
+            "company_name": "Dördüncü Şirket",
+            "name": "Ayşe Yıldız",
+            "email": "ayse@dorduncu.com",
+            "password": "guclu-parola-987",
+        },
+    )
+    refused = outsider.post(
+        "/api/v1/messages/send",
+        json={
+            "application_ids": [application_id],
+            "subject": "Merhaba",
+            "body": "Merhaba {{aday}}",
+        },
+    )
+    assert refused.status_code == 404
+    assert sent_mail == []

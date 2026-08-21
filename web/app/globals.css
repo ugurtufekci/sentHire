@@ -460,3 +460,17 @@ button { font: inherit; }
 
 /* A rule's basis reads as a fact, not as a quotation. */
 .evidence.rule { font-style: normal; border-left-color: var(--line); }
+
+/* ---------- candidate letter preview ---------- */
+.letter {
+  background: var(--surface-2); border-radius: var(--radius);
+  padding: 16px 18px; font-size: 14px; line-height: 1.65;
+}
+.letter-subject { font-weight: 650; margin-bottom: 10px; }
+.letter-body { white-space: pre-wrap; color: var(--ink-2); }
+
+.col-mail {
+  border: none; background: none; cursor: pointer; padding: 0 2px;
+  color: var(--muted); font-size: 13px; line-height: 1;
+}
+.col-mail:hover { color: var(--accent); }

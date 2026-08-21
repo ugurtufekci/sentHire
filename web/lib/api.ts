@@ -7,6 +7,8 @@ import type {
   InvitationLookup,
   Job,
   JobInsights,
+  MessagePreview,
+  MessageTemplate,
   Me,
   Member,
   OrgInfo,
@@ -17,6 +19,8 @@ import type {
   PipelineEventRow,
   ResultDetail,
   ResultsResponse,
+  SendResult,
+  SentMessage,
   RunStatus,
   SpecDocument,
   SpecRow,
@@ -253,4 +257,35 @@ export const api = {
     request<TimelineResponse>(`/applications/${applicationId}/timeline`),
   agenda: () => request<{ items: AgendaItem[] }>("/pipeline/agenda"),
   jobInsights: (jobId: string) => request<JobInsights>(`/jobs/${jobId}/insights`),
+
+  // --- candidate outreach ---
+  messageTemplates: () =>
+    request<{ templates: MessageTemplate[]; variables: string[] }>("/messages/templates"),
+  saveTemplate: (slug: string, payload: { subject: string; body: string; name?: string }) =>
+    request<MessageTemplate>(`/messages/templates/${slug}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  previewMessages: (payload: {
+    application_ids: string[];
+    subject: string;
+    body: string;
+    when?: string | null;
+  }) =>
+    request<{ messages: MessagePreview[] }>("/messages/preview", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  sendMessages: (payload: {
+    application_ids: string[];
+    subject: string;
+    body: string;
+    when?: string | null;
+    template_slug?: string | null;
+    advance_stage?: boolean;
+    confirm_resend?: boolean;
+  }) =>
+    request<SendResult>("/messages/send", { method: "POST", body: JSON.stringify(payload) }),
+  sentMessages: (applicationId: string) =>
+    request<{ messages: SentMessage[] }>(`/applications/${applicationId}/messages`),
 };

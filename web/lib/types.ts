@@ -440,3 +440,42 @@ export interface JobInsights {
   insights: { kind: string; severity: "info" | "notable"; message_tr: string; detail: unknown }[];
   min_sample: number;
 }
+
+export interface MessageTemplate {
+  slug: string;
+  name: string;
+  subject: string;
+  body: string;
+  updated_at: string | null;
+}
+
+export interface MessagePreview {
+  application_id: string;
+  candidate_name: string | null;
+  to_email: string | null;
+  subject: string;
+  body: string;
+  blocked: string | null;
+}
+
+export interface SendResult {
+  sent: { application_id: string; to_email: string; status: string }[];
+  skipped: {
+    application_id: string;
+    reason: string;
+    sent_at?: string | null;
+    needs_confirmation?: boolean;
+  }[];
+}
+
+export interface SentMessage {
+  id: string;
+  template_slug: string | null;
+  to_email: string;
+  subject: string;
+  body: string;
+  status: string;
+  error: string | null;
+  sent_at: string | null;
+  created_at: string | null;
+}

@@ -132,8 +132,19 @@ Screening ends with a ranked list; the hiring work continues for weeks. The boar
   five pursued candidates sit is reported as the workspace's *working*
   shortlist threshold. Every figure carries its sample size, and weak evidence
   stays silent rather than dressing noise as insight.
-- Planned next: automatic interview e-mails to candidates marked positive (the
-  mail infrastructure from invitations/password resets is already in place).
+- **Candidate outreach (shipped)**: interview invitations, rejections and
+  info requests are written from the board — one candidate from the drawer, a
+  whole column from its header, or a tray selection. Workspace-editable
+  templates with {{aday}}/{{ilan}}/{{sirket}}/{{gonderen}}/{{tarih}}
+  variables; the preview shows the exact letter the first recipient gets, and
+  the letter carries no vendor branding — it is the company writing, with the
+  recruiter's address as Reply-To. Three hard rules: nothing sends on a stage
+  change (a mis-drag must never write to a real person), the outbox stores the
+  rendered copy verbatim (editing a template cannot rewrite what someone
+  received), and writing to the same person with the same template twice takes
+  an explicit second confirmation. Sending records a contact event and moves
+  the card to "Temas kuruldu" / "Olumsuz", so the board keeps telling the
+  truth.
 
 ## 10. Trust affordances (cross-cutting)
 

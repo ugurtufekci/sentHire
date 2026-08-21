@@ -18,6 +18,36 @@ from email.message import EmailMessage
 from senthire.config import get_settings
 
 
+def render_plain_email(subject: str, body: str) -> tuple[str, str]:
+    """A letter, not a product notification.
+
+    Candidate mail carries no sentHire branding and no button: the sender is the
+    company, the reader is their applicant, and a hiring letter that looks like
+    a SaaS notification reads as a mass mailing — which is precisely what a
+    candidate should not feel they received.
+    """
+    paragraphs = "".join(
+        f'<p style="margin:0 0 14px;color:#3d4540;font-size:15px;line-height:1.65;'
+        f'white-space:pre-wrap;">{_escape(part)}</p>'
+        for part in body.split("\n\n")
+        if part.strip()
+    )
+    html = f"""\
+<div style="background:#f6f7f4;padding:32px 16px;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e4e7e0;
+              border-radius:12px;padding:28px;">
+    {paragraphs}
+  </div>
+</div>"""
+    return html, body
+
+
+def _escape(value: str) -> str:
+    return (
+        value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    )
+
+
 def render_email(
     title: str,
     lines: list[str],
@@ -100,14 +130,23 @@ def password_reset_email(reset_url: str, ttl_minutes: int) -> tuple[str, str, st
     return subject, html, text
 
 
-def send_email(to: str, subject: str, html: str, text: str) -> None:
-    """Deliver via the configured backend. Raises on SMTP failure (caller retries)."""
+def send_email(
+    to: str, subject: str, html: str, text: str, reply_to: str | None = None
+) -> None:
+    """Deliver via the configured backend. Raises on SMTP failure (caller retries).
+
+    `reply_to` matters for candidate outreach: the mail leaves from the
+    platform's address, but a candidate answering "hangi gün uygun?" must reach
+    the recruiter who wrote it, not a no-reply mailbox.
+    """
     settings = get_settings()
     if settings.email_backend == "smtp":
         message = EmailMessage()
         message["From"] = settings.email_from
         message["To"] = to
         message["Subject"] = subject
+        if reply_to:
+            message["Reply-To"] = reply_to
         message.set_content(text)
         message.add_alternative(html, subtype="html")
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as smtp:

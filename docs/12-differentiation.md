@@ -98,9 +98,12 @@ in that order.
    now traces to a rung a person can read — the thing hardest to fake with
    ad-hoc prompting, because it requires the scoring to be code rather than
    vibes.
-5. **Workflow depth.** Automatic interview e-mails to positive candidates
-   (mail infra is live), scheduling hooks, exports that HR actually files.
-   Each step moves us from "tool you try" to "system your hiring runs on".
+5. **Workflow depth.** *(first slice shipped)* Candidate outreach lives on
+   the board: templated interview invitations, rejections and info requests,
+   previewed as the exact letter, recorded verbatim in an outbox, never
+   triggered by a drag ([doc 10 §9](10-product-ux.md)). Next: scheduling
+   hooks and exports that HR actually files. Each step moves us from "tool
+   you try" to "system your hiring runs on".
 6. **ATS integrations.** Last deliberately: valuable for distribution, but a
    commodity surface — the four items above are why customers stay.
 

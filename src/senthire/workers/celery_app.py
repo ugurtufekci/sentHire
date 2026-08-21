@@ -19,4 +19,9 @@ celery_app.conf.update(
     broker_connection_retry_on_startup=True,
 )
 
-celery_app.autodiscover_tasks(["senthire.workers.tasks"], force=True)
+# Task registration happens by importing the package: tasks/__init__.py walks
+# its own modules. (autodiscover_tasks looked like it did this, but it searches
+# for a `tasks` module *inside* each named package — senthire.workers.tasks.tasks
+# — which does not exist, so it registered nothing and the imports in __init__
+# were doing all the real work.)
+import senthire.workers.tasks  # noqa: E402, F401

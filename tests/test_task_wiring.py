@@ -18,7 +18,10 @@ from pathlib import Path
 
 import pytest
 
-TASK_MODULES = sorted(Path("src/senthire/workers/tasks").glob("*.py"))
+TASK_MODULES = sorted(
+    path for path in Path("src/senthire/workers/tasks").glob("*.py")
+    if path.stem != "__init__"  # the package walker, not a task module
+)
 
 
 def _dispatched_names(path: Path) -> set[str]:
