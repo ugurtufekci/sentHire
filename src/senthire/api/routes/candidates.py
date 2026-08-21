@@ -1,10 +1,11 @@
 """Intake status + parsed candidates per job (docs/10 §3)."""
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from senthire.api.deps import get_db, get_org, parse_uuid
+from senthire.api.deps import get_db, get_org, parse_uuid, require_admin
 from senthire.db.models import (
     Application,
     Candidate,
@@ -12,7 +13,9 @@ from senthire.db.models import (
     Document,
     Job,
     Organization,
+    User,
 )
+from senthire.services import storage
 
 router = APIRouter(tags=["candidates"])
 
@@ -89,3 +92,56 @@ def job_candidates(
         counts[d.parse_status] = counts.get(d.parse_status, 0) + 1
 
     return {"job_id": str(job.id), "funnel": counts, "files": files, "applications": applications}
+
+
+@router.get("/applications/{application_id}/document")
+def application_document(
+    application_id: str,
+    org: Organization = Depends(get_org),
+    session: Session = Depends(get_db),
+) -> dict:
+    """A short-lived URL to the candidate's original CV.
+
+    The evidence quotes are excerpts; the hiring decision is made on the
+    document. Presigned in production, served by the API under the local
+    backend — the caller cannot tell the difference and should not need to.
+    """
+    application = session.get(Application, parse_uuid(application_id, "application_id"))
+    if application is None or application.org_id != org.id:
+        raise HTTPException(status_code=404, detail="application not found")
+    document = session.get(Document, application.document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="document not found")
+    return {
+        "url": storage.presign_get(document.s3_key),
+        "filename": document.original_filename,
+    }
+
+
+class EraseIn(BaseModel):
+    # The client must send the candidate id back: a bare DELETE from a mis-
+    # wired button must not destroy a person's record.
+    confirm_candidate_id: str
+
+
+@router.post("/candidates/{candidate_id}/erase")
+def erase_candidate_data(
+    candidate_id: str,
+    payload: EraseIn,
+    admin: User = Depends(require_admin),
+    session: Session = Depends(get_db),
+) -> dict:
+    """KVKK/GDPR erasure — admin-only, irreversible, audited."""
+    from senthire.services.erasure import erase_candidate
+
+    parsed = parse_uuid(candidate_id, "candidate_id")
+    if payload.confirm_candidate_id != candidate_id:
+        raise HTTPException(status_code=422, detail="onay kimliği eşleşmiyor")
+    candidate = session.get(Candidate, parsed)
+    if candidate is None or candidate.org_id != admin.org_id:
+        raise HTTPException(status_code=404, detail="candidate not found")
+    if candidate.erased_at is not None:
+        return {"already_erased": True}
+    result = erase_candidate(session, candidate, actor=admin)
+    session.commit()
+    return result

@@ -83,7 +83,10 @@ export default function JobsPage() {
             <Link key={job.id} href={`/jobs/${job.id}`} className="card row-hover" style={{ display: "block", color: "inherit" }}>
               <div className="hstack" style={{ justifyContent: "space-between" }}>
                 <strong>{job.title}</strong>
-                <span className="tiny">{formatDate(job.created_at)}</span>
+                <span className="hstack" style={{ gap: 8 }}>
+                  {job.status === "closed" && <span className="chip">Kapalı</span>}
+                  <span className="tiny">{formatDate(job.created_at)}</span>
+                </span>
               </div>
             </Link>
           ))}

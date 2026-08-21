@@ -157,6 +157,64 @@ def me(
     return _me_payload(user, org)
 
 
+class ProfilePatch(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+
+
+class PasswordChangeIn(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=10, max_length=200)
+
+
+@router.patch("/auth/me")
+def update_profile(
+    payload: ProfilePatch,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> dict:
+    user.name = payload.name.strip()
+    session.commit()
+    org = session.get(Organization, user.org_id)
+    return _me_payload(user, org)
+
+
+@router.post("/auth/change-password")
+def change_password(
+    request: Request,
+    payload: PasswordChangeIn,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> dict:
+    """Change the password of a signed-in account.
+
+    Requires the current password even though the user is signed in: a session
+    cookie on an unlocked laptop must not be enough to take over the account.
+    Every *other* session is revoked — "log out my other devices" — while this
+    one is spared rather than replaced. Sparing is deliberate: a replacement
+    cookie rides on the response, and the browser can cancel that response (a
+    navigation right after clicking save) after the server has already acted —
+    which would log the user out of the very device they changed the password
+    from. The surviving session predates the change but was authenticated with
+    the old password *and* re-proved it in this request.
+    """
+    if not auth_service.verify_password(payload.current_password, user.password_hash):
+        raise HTTPException(status_code=403, detail="mevcut parola hatalı")
+    user.password_hash = auth_service.hash_password(payload.new_password)
+    current_token = request.cookies.get(get_settings().session_cookie_name)
+    auth_service.revoke_all_sessions(session, user.id, keep_token=current_token)
+    session.flush()
+    session.add(
+        AuditLog(
+            org_id=user.org_id,
+            actor=user.id,
+            event="auth.password_changed",
+            entity={"user_id": str(user.id)},
+        )
+    )
+    session.commit()
+    return {"ok": True}
+
+
 def _mask_email(email: str) -> str:
     local, _, domain = email.partition("@")
     return f"{local[:1]}***@{domain}"

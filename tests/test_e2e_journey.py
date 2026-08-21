@@ -2062,3 +2062,179 @@ def test_exports_are_tenant_scoped(client, new_client, storage_stub, fake_models
     )
     assert outsider.get(f"/api/v1/runs/{run_id}/results.csv").status_code == 404
     assert outsider.get(f"/api/v1/jobs/{job_id}/pipeline.csv").status_code == 404
+
+
+# --------------------------------------------------------------------------- #
+# 14. Settings-era endpoints: profile, password, org, job lifecycle
+# --------------------------------------------------------------------------- #
+
+
+def test_a_user_can_rename_themselves(client):
+    updated = client.patch("/api/v1/auth/me", json={"name": "Ayşe Demir Yıldız"}).json()
+    assert updated["user"]["name"] == "Ayşe Demir Yıldız"
+    client.patch("/api/v1/auth/me", json={"name": "Ayşe Demir"})
+
+
+def test_changing_the_password_needs_the_old_one_and_keeps_this_session(
+    client, new_client
+):
+    wrong = client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": "tahmin", "new_password": "yepyeni-parola-123"},
+    )
+    assert wrong.status_code == 403
+
+    other = new_client()
+    other.post(
+        "/api/v1/auth/login",
+        json={"email": "ayse@aksatek.com", "password": "guclu-parola-123"},
+    )
+    assert other.get("/api/v1/auth/me").status_code == 200
+
+    changed = client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": "guclu-parola-123", "new_password": "yepyeni-parola-123"},
+    )
+    assert changed.status_code == 200
+    assert client.get("/api/v1/auth/me").status_code == 200, (
+        "changing your password must not log you out of the session you did it from"
+    )
+    assert other.get("/api/v1/auth/me").status_code == 401, (
+        "every other session dies — that is the point of changing a password"
+    )
+
+    # restore for the rest of the module
+    client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": "yepyeni-parola-123", "new_password": "guclu-parola-123"},
+    )
+
+
+def test_an_admin_can_rename_the_workspace_and_a_member_cannot(client, new_client):
+    renamed = client.patch("/api/v1/org", json={"name": "Aksa Teknoloji A.Ş."}).json()
+    assert renamed["name"] == "Aksa Teknoloji A.Ş."
+    assert client.get("/api/v1/auth/me").json()["org"]["name"] == "Aksa Teknoloji A.Ş."
+    client.patch("/api/v1/org", json={"name": "Aksa Teknoloji"})
+    assert client.patch("/api/v1/org", json={"name": " "}).status_code == 422
+
+
+def test_closing_a_job_keeps_its_record_readable(client, storage_stub, fake_models):
+    job_id = _screened_job(client, storage_stub, "Kapanış Testi")
+    run_id = _latest_run(client, job_id)
+
+    closed = client.patch(f"/api/v1/jobs/{job_id}", json={"status": "closed"}).json()
+    assert closed["status"] == "closed"
+    assert client.get(f"/api/v1/runs/{run_id}/results").status_code == 200, (
+        "a hiring record is a record — closing must not hide it"
+    )
+    assert client.get(f"/api/v1/jobs/{job_id}/pipeline").status_code == 200
+    reopened = client.patch(f"/api/v1/jobs/{job_id}", json={"status": "active"}).json()
+    assert reopened["status"] == "active"
+
+
+def test_the_original_cv_is_one_click_away(client, storage_stub, fake_models):
+    job_id = _screened_job(client, storage_stub, "CV Görüntüleme Testi")
+    application_id = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()["tray"][0][
+        "application_id"
+    ]
+    document = client.get(f"/api/v1/applications/{application_id}/document").json()
+    assert document["url"].startswith("https://stub/"), document
+    assert document["filename"].endswith(".pdf")
+
+
+# --------------------------------------------------------------------------- #
+# 15. KVKK erasure — the proof is in what remains
+# --------------------------------------------------------------------------- #
+
+
+def test_erasing_a_candidate_removes_the_person_and_keeps_the_numbers(
+    client, new_client, storage_stub, fake_models, sent_mail
+):
+    import uuid as _uuid
+
+    from sqlalchemy import select
+
+    from senthire.db.models import Candidate, CandidateProfileRow, Evaluation
+    from senthire.db.session import get_sessionmaker
+
+    job_id = _screened_job(client, storage_stub, "KVKK Silme Testi")
+    board = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()
+    card = board["tray"][0]
+    application_id = card["application_id"]
+    victim_name = card["candidate_name"]
+
+    # leave personal traces everywhere first: a note, a letter
+    client.post(
+        f"/api/v1/applications/{application_id}/events",
+        json={"kind": "note", "note": f"{victim_name} ile ön görüşme yapıldı"},
+    )
+    client.post(
+        "/api/v1/messages/send",
+        json={
+            "application_ids": [application_id],
+            "subject": "Merhaba {{aday}}",
+            "body": "Merhaba {{aday}}",
+            "template_slug": "info_request",
+        },
+    )
+
+    # the id the UI itself would use — no side-channel lookup that can grab a
+    # namesake from another job when the whole module has run
+    candidate_id = client.get(f"/api/v1/applications/{application_id}/timeline").json()[
+        "candidate_id"
+    ]
+
+    # a member cannot erase; a mismatched confirmation cannot erase
+    member = new_client()
+    member.post(
+        "/api/v1/auth/signup",
+        json={"company_name": "Yedinci Şirket", "name": "Zey Kaya",
+              "email": "zey@yedinci.com", "password": "parola-yedinci-1"},
+    )
+    assert member.post(
+        f"/api/v1/candidates/{candidate_id}/erase",
+        json={"confirm_candidate_id": candidate_id},
+    ).status_code == 404
+    assert client.post(
+        f"/api/v1/candidates/{candidate_id}/erase",
+        json={"confirm_candidate_id": str(_uuid.uuid4())},
+    ).status_code == 422
+
+    result = client.post(
+        f"/api/v1/candidates/{candidate_id}/erase",
+        json={"confirm_candidate_id": candidate_id},
+    ).json()
+    assert result.get("applications", 0) >= 1, result
+    assert result.get("documents", 0) >= 1, result
+
+    # The proof: the person is gone from every surface...
+    session = get_sessionmaker()()
+    stub = session.get(Candidate, _uuid.UUID(candidate_id))
+    assert stub.erased_at is not None
+    assert (stub.display_name, stub.primary_email, stub.identity_keys) == (None, None, [])
+    assert (
+        session.scalar(
+            select(CandidateProfileRow).where(
+                CandidateProfileRow.candidate_id == stub.id
+            )
+        )
+        is None
+    ), "the parsed profile and raw text are the CV — they must go"
+    evaluation = session.scalar(
+        select(Evaluation).where(Evaluation.application_id == _uuid.UUID(application_id))
+    )
+    assert evaluation is not None, "the run's counts stay honest"
+    assert evaluation.result == {"erased": True}, "but evidence quotes are CV text — gone"
+    session.close()
+
+    timeline = client.get(f"/api/v1/applications/{application_id}/timeline").json()
+    assert timeline["candidate_name"] is None
+    assert timeline["events"] == [], "notes name the person — gone"
+    messages = client.get(f"/api/v1/applications/{application_id}/messages").json()
+    assert messages["messages"] == [], "letters name the person — gone"
+
+    # ...idempotent, and the same address can apply again as a new person
+    assert client.post(
+        f"/api/v1/candidates/{candidate_id}/erase",
+        json={"confirm_candidate_id": candidate_id},
+    ).json() == {"already_erased": True}

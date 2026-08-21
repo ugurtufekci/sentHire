@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -52,6 +54,37 @@ def list_jobs(org: Organization = Depends(get_org), session: Session = Depends(g
         select(Job).where(Job.org_id == org.id).order_by(Job.created_at.desc())
     ).all()
     return [_job_out(j) for j in rows]
+
+
+class JobPatch(BaseModel):
+    status: Literal["active", "closed"] | None = None
+    title: str | None = None
+
+
+@router.patch("/jobs/{job_id}")
+def update_job(
+    job_id: str,
+    payload: JobPatch,
+    org: Organization = Depends(get_org),
+    session: Session = Depends(get_db),
+) -> dict:
+    """Close a filled or cancelled job so the list stays a worklist.
+
+    Closing changes nothing else on purpose: results, pipeline and exports
+    remain readable — a hiring record is a record — and reopening is one call.
+    """
+    job = session.get(Job, parse_uuid(job_id, "job_id"))
+    if job is None or job.org_id != org.id:
+        raise HTTPException(status_code=404, detail="job not found")
+    if payload.title is not None:
+        title = payload.title.strip()
+        if not 2 <= len(title) <= 200:
+            raise HTTPException(status_code=422, detail="başlık 2–200 karakter olmalı")
+        job.title = title
+    if payload.status is not None:
+        job.status = payload.status
+    session.commit()
+    return _job_out(job)
 
 
 @router.get("/jobs/{job_id}")

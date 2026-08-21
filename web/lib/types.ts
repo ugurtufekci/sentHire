@@ -397,6 +397,7 @@ export interface PipelineEventRow {
 
 export interface TimelineResponse extends PipelineCard {
   job_id: string;
+  candidate_id: string;
   events: PipelineEventRow[];
 }
 

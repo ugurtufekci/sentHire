@@ -109,6 +109,18 @@ def get_object_bytes(key: str) -> bytes:
     return _s3().get_object(Bucket=settings.s3_bucket, Key=key)["Body"].read()
 
 
+def delete_object(key: str) -> None:
+    """Remove one object. Missing objects are fine — erasure is idempotent."""
+    if _is_local():
+        try:
+            local_path(key).unlink(missing_ok=True)
+        except ValueError:
+            pass  # not a key we minted; nothing of ours to delete
+        return
+    settings = get_settings()
+    _s3().delete_object(Bucket=settings.s3_bucket, Key=key)
+
+
 def object_size(key: str) -> int:
     if _is_local():
         return local_path(key).stat().st_size

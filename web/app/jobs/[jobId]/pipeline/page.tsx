@@ -459,6 +459,7 @@ function CandidateDrawer({
   const [nextAction, setNextAction] = useState("");
   const [nextActionAt, setNextActionAt] = useState("");
   const [saving, setSaving] = useState(false);
+  const [erasing, setErasing] = useState(false);
   const seeded = useRef(false);
 
   const load = useCallback(() => {
@@ -566,6 +567,18 @@ function CandidateDrawer({
               {data.band && <span className={bandClass(data.band)}>{BAND_LABEL[data.band]}</span>}
               {data.score != null && <span className="chip">Puan {scoreText(data.score)}</span>}
               {data.candidate_email && <span className="tiny">{data.candidate_email}</span>}
+              <button
+                className="btn btn-ghost"
+                style={{ paddingInline: 4 }}
+                onClick={() =>
+                  api
+                    .applicationDocument(applicationId)
+                    .then((d) => window.open(d.url, "_blank", "noopener"))
+                    .catch((e: ApiError) => setError(e.message))
+                }
+              >
+                CV ↗
+              </button>
             </div>
 
             <hr className="divider" />
@@ -772,6 +785,39 @@ function CandidateDrawer({
                 </li>
               ))}
             </ol>
+
+            <hr className="divider" />
+            <details className="danger-zone">
+              <summary className="tiny">Aday verilerini sil (KVKK)</summary>
+              <p className="tiny" style={{ margin: "8px 0" }}>
+                Adayın CV&apos;si, profili, notları, mesajları ve değerlendirme
+                içerikleri kalıcı olarak silinir; yalnızca kimliksiz sayılar kalır.
+                Bu işlem geri alınamaz ve denetim kaydına işlenir.
+              </p>
+              <button
+                className="btn danger"
+                disabled={erasing}
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      `${data.candidate_name ?? "Bu adayın"} tüm verileri kalıcı olarak silinecek. Emin misiniz?`,
+                    )
+                  )
+                    return;
+                  setErasing(true);
+                  api
+                    .eraseCandidate(data.candidate_id)
+                    .then(() => {
+                      onChanged();
+                      onClose();
+                    })
+                    .catch((e: ApiError) => setError(e.message))
+                    .finally(() => setErasing(false));
+                }}
+              >
+                Kalıcı olarak sil
+              </button>
+            </details>
           </>
         )}
       </aside>

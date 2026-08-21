@@ -92,6 +92,35 @@ def org_info(
     }
 
 
+class OrgPatch(BaseModel):
+    name: str
+
+
+@router.patch("/org")
+def rename_org(
+    payload: OrgPatch,
+    admin: User = Depends(require_admin),
+    session: Session = Depends(get_db),
+) -> dict:
+    name = payload.name.strip()
+    if not 2 <= len(name) <= 120:
+        raise HTTPException(status_code=422, detail="şirket adı 2–120 karakter olmalı")
+    org = session.get(Organization, admin.org_id)
+    if name != org.name:
+        session.add(
+            AuditLog(
+                org_id=org.id,
+                actor=admin.id,
+                event="org.renamed",
+                entity={"org_id": str(org.id)},
+                detail={"from": org.name, "to": name},
+            )
+        )
+        org.name = name
+        session.commit()
+    return {"id": str(org.id), "name": org.name}
+
+
 @router.get("/org/members")
 def list_members(
     user: User = Depends(get_current_user), session: Session = Depends(get_db)

@@ -310,6 +310,7 @@ def timeline(
     return {
         **_card(app, candidate, evaluation, owner),
         "job_id": str(app.job_id),
+        "candidate_id": str(app.candidate_id),
         "events": [_event_out(e, actors.get(e.actor_id)) for e in events],
     }
 

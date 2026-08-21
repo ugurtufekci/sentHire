@@ -117,7 +117,20 @@ export const api = {
       { redirectOn401: false },
     ),
 
+  updateProfile: (name: string) =>
+    request<Me>("/auth/me", { method: "PATCH", body: JSON.stringify({ name }) }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ ok: boolean }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
+
   orgInfo: () => request<OrgInfo>("/org"),
+  renameOrg: (name: string) =>
+    request<{ id: string; name: string }>("/org", {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }),
   listMembers: () => request<Member[]>("/org/members"),
   listInvitations: () => request<PendingInvitation[]>("/org/invitations"),
   createInvitation: (email: string, role: "admin" | "member") =>
@@ -156,6 +169,17 @@ export const api = {
   listTemplates: () => request<Template[]>("/templates"),
   listJobs: () => request<Job[]>("/jobs"),
   getJob: (jobId: string) => request<Job>(`/jobs/${jobId}`),
+  updateJob: (jobId: string, patch: { status?: "active" | "closed"; title?: string }) =>
+    request<Job>(`/jobs/${jobId}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  applicationDocument: (applicationId: string) =>
+    request<{ url: string; filename: string | null }>(
+      `/applications/${applicationId}/document`,
+    ),
+  eraseCandidate: (candidateId: string) =>
+    request<{ applications?: number; already_erased?: boolean }>(
+      `/candidates/${candidateId}/erase`,
+      { method: "POST", body: JSON.stringify({ confirm_candidate_id: candidateId }) },
+    ),
   createJob: (title: string, templateSlug: string | null) =>
     request<Job>("/jobs", {
       method: "POST",

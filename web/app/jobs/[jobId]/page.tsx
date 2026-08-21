@@ -55,9 +55,27 @@ export default function JobPage() {
         <h1 className="page-title" style={{ marginBottom: 0 }}>
           {job?.title ?? "…"}
         </h1>
-        <Link href={`/jobs/${jobId}/pipeline`} className="btn">
-          Aday akışı →
-        </Link>
+        <div className="hstack">
+          {job?.status === "closed" && <span className="chip">Kapalı</span>}
+          {job && (
+            <button
+              className="btn"
+              onClick={() =>
+                api
+                  .updateJob(jobId, {
+                    status: job.status === "closed" ? "active" : "closed",
+                  })
+                  .then(setJob)
+                  .catch((e) => setError((e as Error).message))
+              }
+            >
+              {job.status === "closed" ? "İlanı yeniden aç" : "İlanı kapat"}
+            </button>
+          )}
+          <Link href={`/jobs/${jobId}/pipeline`} className="btn">
+            Aday akışı →
+          </Link>
+        </div>
       </div>
       <p className="page-sub">
         Üç adım: kriterlerinizi anlatın ve onaylayın, CV&apos;leri yükleyin, taramayı başlatın.

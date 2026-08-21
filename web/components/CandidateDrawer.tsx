@@ -83,6 +83,22 @@ export default function CandidateDrawer({
 
         {error && <div className="notice bad">{error}</div>}
         {!detail && !error && <div className="empty">Yükleniyor…</div>}
+        {detail && (
+          <p style={{ margin: "4px 0 0" }}>
+            <button
+              className="btn btn-ghost"
+              style={{ paddingInline: 0 }}
+              onClick={() =>
+                api
+                  .applicationDocument(applicationId)
+                  .then((d) => window.open(d.url, "_blank", "noopener"))
+                  .catch((e) => setError((e as Error).message))
+              }
+            >
+              Orijinal CV&apos;yi aç ↗
+            </button>
+          </p>
+        )}
 
         {detail && doc && (
           <div className="stack" style={{ gap: 16 }}>

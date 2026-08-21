@@ -46,6 +46,9 @@ export default function UserMenu() {
         <span className="user-name">{session.user.name || session.user.email}</span>
       </summary>
       <div className="menu-pop" onClick={() => (detailsRef.current!.open = false)}>
+        <Link className="menu-item" href="/settings">
+          Ayarlar
+        </Link>
         <Link className="menu-item" href="/team">
           Ekip
         </Link>

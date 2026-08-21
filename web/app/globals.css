@@ -474,3 +474,9 @@ button { font: inherit; }
   color: var(--muted); font-size: 13px; line-height: 1;
 }
 .col-mail:hover { color: var(--accent); }
+
+/* ---------- danger zone (KVKK erasure) ---------- */
+.danger-zone summary { cursor: pointer; color: var(--muted); }
+.danger-zone summary:hover { color: var(--bad); }
+.btn.danger { border-color: var(--bad); color: var(--bad); background: transparent; }
+.btn.danger:hover:not(:disabled) { background: var(--bad-tint); }

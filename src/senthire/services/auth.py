@@ -87,12 +87,26 @@ def revoke_session(db: Session, token: str) -> None:
         auth_session.revoked_at = datetime.now(UTC)
 
 
-def revoke_all_sessions(db: Session, user_id: uuid.UUID) -> None:
+def revoke_all_sessions(
+    db: Session, user_id: uuid.UUID, *, keep_token: str | None = None
+) -> None:
+    """Revoke a user's sessions, optionally sparing the one making the request.
+
+    The sparing matters for password change: the browser's fetch can be
+    cancelled by a navigation *after* the server has already processed the
+    request, so a replacement cookie in the response is not guaranteed to
+    arrive. If the current session dies with the rest, that race logs the user
+    out of the very device they changed the password from. Keeping it is also
+    the honest semantics — "log out my *other* devices".
+    """
+    keep_hash = hash_token(keep_token) if keep_token else None
     for auth_session in db.scalars(
         select(AuthSession).where(
             AuthSession.user_id == user_id, AuthSession.revoked_at.is_(None)
         )
     ):
+        if keep_hash is not None and auth_session.token_hash == keep_hash:
+            continue
         auth_session.revoked_at = datetime.now(UTC)
 
 

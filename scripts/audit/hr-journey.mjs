@@ -456,6 +456,108 @@ await expect("H", "Kotamı ve planımı görebiliyorum", async () => {
 });
 await page.screenshot({ path: `${OUT}/hr-09-fatura.png`, fullPage: true });
 
+/* ------------------------------------------------------ J. Ayarlar & MVP */
+console.log("\nJ. Ayarlar, CV görüntüleme, ilan kapatma, KVKK");
+
+await expect("J", "Ayarlar sayfası menüden açılıyor", async () => {
+  await page.goto(BASE + "/", { waitUntil: "networkidle" });
+  await page.click(".user-menu summary");
+  await page.click('a:has-text("Ayarlar")');
+  await page.waitForURL("**/settings", { timeout: 10000 });
+  await page.waitForSelector("#profile-name", { timeout: 10000 });
+});
+
+await expect("J", "Adımı değiştirince üst bar güncelleniyor", async () => {
+  await page.fill("#profile-name", "Selin Duman Ak");
+  await page.click('#profile-name >> xpath=ancestor::form//button[@type="submit"]');
+  // form-scoped: başka bir kartın taze "Kaydedildi" rozeti bunu doğrulamaz
+  await page.waitForSelector('form:has(#profile-name) >> text=Kaydedildi', { timeout: 10000 });
+  await page.waitForFunction(
+    () => document.querySelector(".topbar")?.textContent.includes("Selin Duman Ak"),
+    { timeout: 10000 }
+  );
+});
+
+await expect("J", "Parola değişince bu oturum açık kalıyor", async () => {
+  await page.fill("#current-password", HR.pass);
+  await page.fill("#new-password", "daha-da-guclu-parola-2026");
+  await page.click('#new-password >> xpath=ancestor::form//button[@type="submit"]');
+  await page.waitForSelector('form:has(#new-password) >> text=Kaydedildi', { timeout: 15000 });
+  HR.pass = "daha-da-guclu-parola-2026";
+  await page.goto(BASE + "/", { waitUntil: "networkidle" });
+  await page.waitForSelector(".user-menu", { timeout: 10000 });
+});
+
+await expect("J", "Mesaj şablonu düzenlenip kaydediliyor", async () => {
+  await page.goto(BASE + "/settings", { waitUntil: "networkidle" });
+  await page.locator('.req-card:has-text("Ek bilgi") button:has-text("Düzenle")').click();
+  const bodyBox = page.locator(".req-card .textarea");
+  await bodyBox.fill("Merhaba {{aday}},\n\nKısa bir sorumuz var. Teşekkürler,\n{{gonderen}}");
+  await page.click('.req-card button[type="submit"]');
+  await page.waitForSelector('.req-card:has(.textarea) >> text=Kaydedildi', { timeout: 10000 })
+    .catch(async () => {
+      // the card collapses on success; accept either proof
+      const stillEditing = await page.locator(".req-card .textarea").count();
+      if (stillEditing) throw new Error("şablon kaydedilemedi");
+    });
+});
+
+await expect("J", "Orijinal CV tek istekle iniyor", async () => {
+  const doc = await page.request.get(
+    BASE + "/api/v1/applications/" + (await firstApplicationId()) + "/document"
+  );
+  if (doc.status() !== 200) throw new Error(`HTTP ${doc.status()}`);
+  const payload = await doc.json();
+  const pdf = await page.request.get(payload.url);
+  if (pdf.status() !== 200) throw new Error(`CV HTTP ${pdf.status()}`);
+  const bytes = await pdf.body();
+  if (!bytes.slice(0, 4).toString().startsWith("%PDF")) throw new Error("PDF değil");
+  return payload.filename;
+});
+
+async function firstApplicationId() {
+  const jobsResp = await page.request.get(BASE + "/api/v1/jobs");
+  const jobs = await jobsResp.json();
+  const board = await (
+    await page.request.get(BASE + `/api/v1/jobs/${jobs[0].id}/pipeline`)
+  ).json();
+  const cards = [...Object.values(board.columns).flat(), ...board.tray];
+  return cards[0].application_id;
+}
+
+await expect("J", "İlan kapatılıp listede işaretleniyor, kayıt okunur kalıyor", async () => {
+  await page.goto(jobUrl, { waitUntil: "networkidle" });
+  await page.click('button:has-text("İlanı kapat")');
+  await page.waitForSelector('.chip:has-text("Kapalı")', { timeout: 10000 });
+  await page.goto(BASE + "/", { waitUntil: "networkidle" });
+  await page.waitForSelector('.chip:has-text("Kapalı")', { timeout: 10000 });
+  await page.goto(jobUrl + "/pipeline", { waitUntil: "networkidle" });
+  await page.waitForSelector(".board-col", { timeout: 10000 });
+  await page.goto(jobUrl, { waitUntil: "networkidle" });
+  await page.click('button:has-text("yeniden aç")');
+  await page.waitForSelector('button:has-text("İlanı kapat")', { timeout: 10000 });
+});
+
+await expect("J", "KVKK silme onay istiyor ve adayı gerçekten siliyor", async () => {
+  await page.goto(jobUrl + "/pipeline", { waitUntil: "networkidle" });
+  await page.waitForSelector(".pcard, .tray-row", { timeout: 10000 });
+  const target = page.locator(".pcard").last();
+  const targetName = (await target.textContent()).trim().slice(0, 12);
+  await target.click();
+  await page.waitForSelector(".drawer .danger-zone", { timeout: 10000 });
+  await page.click(".danger-zone summary");
+  page.once("dialog", (d) => d.accept());
+  await page.click('.danger-zone button:has-text("Kalıcı olarak sil")');
+  await page.waitForSelector(".drawer", { state: "detached", timeout: 15000 });
+  await page.waitForFunction(
+    (name) => !document.body.textContent.includes(name),
+    targetName,
+    { timeout: 10000 }
+  );
+  return `${targetName}… silindi, panoda isimsiz`;
+});
+await page.screenshot({ path: `${OUT}/hr-10-kvkk.png`, fullPage: true });
+
 /* --------------------------------------------------- I. Kırılganlık */
 console.log("\nI. Kırılganlık ve hata halleri");
 probing = true; // beklenen 404/422'ler burada üretiliyor

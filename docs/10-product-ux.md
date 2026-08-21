@@ -109,6 +109,24 @@ Side-by-side matrix (2–5 candidates × requirements) with verdict icons and pe
 evidence popovers; export of the shortlist + per-candidate reports (PDF) for hiring
 managers — export events are audited.
 
+## 8a. Settings, account and record-keeping (shipped)
+
+- **Ayarlar**: profile name, password change (requires the current password;
+  revokes every *other* session and deliberately spares the one making the
+  request — the response carrying a replacement cookie can be cancelled by a
+  navigation after the server has already acted, which would log the user out
+  of the very device they changed the password from), workspace rename
+  (admin), and the candidate message templates editor.
+- **Original CV, one click away**: every candidate drawer links the source
+  document via a short-lived URL — evidence quotes are excerpts; decisions are
+  made on the document.
+- **Job lifecycle**: jobs close and reopen; closing hides nothing — results,
+  pipeline and exports stay readable, because a hiring record is a record.
+- **KVKK erasure**: admin-only, confirmation-gated, audited. The CV, parsed
+  profile, raw text, evidence quotes, notes and letters are removed; the
+  candidate row survives as an anonymized stub so counts stay honest, and the
+  same address can apply again as a new person — erasure must not become a ban.
+
 ## 9. Hiring pipeline: from ranking to hire (shipped)
 
 Screening ends with a ranked list; the hiring work continues for weeks. The board
