@@ -173,6 +173,7 @@ def send_messages(
             sender=user,
             template_slug=payload.template_slug,
             advance_stage=payload.advance_stage,
+            when=payload.when,
         )
         sent.append(
             {
@@ -182,7 +183,17 @@ def send_messages(
             }
         )
     session.commit()
-    return {"sent": sent, "skipped": skipped}
+    from senthire.services.calendar import parse_when
+
+    return {
+        "sent": sent,
+        "skipped": skipped,
+        # so the composer can say "takvim daveti eklendi" truthfully
+        "calendar_attached": (
+            payload.template_slug == "interview_invite"
+            and parse_when(payload.when) is not None
+        ),
+    }
 
 
 @router.get("/applications/{application_id}/messages")

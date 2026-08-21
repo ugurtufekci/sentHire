@@ -1722,8 +1722,10 @@ def sent_mail(monkeypatch):
 
     from senthire.services import outreach
 
-    def fake_enqueue(to, subject, html, text, reply_to=None):
-        outbox.append({"to": to, "subject": subject, "text": text, "reply_to": reply_to})
+    def fake_enqueue(to, subject, html, text, reply_to=None, ics=None):
+        outbox.append(
+            {"to": to, "subject": subject, "text": text, "reply_to": reply_to, "ics": ics}
+        )
         return True
 
     monkeypatch.setattr(outreach, "enqueue_mail", fake_enqueue)
@@ -1922,3 +1924,141 @@ def test_outreach_is_tenant_scoped(client, new_client, storage_stub, fake_models
     )
     assert refused.status_code == 404
     assert sent_mail == []
+
+
+def test_an_interview_invite_with_a_time_carries_a_calendar_invite(
+    client, storage_stub, fake_models, sent_mail
+):
+    job_id = _screened_job(client, storage_stub, "Takvim Testi")
+    application_id = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()["tray"][0][
+        "application_id"
+    ]
+    result = client.post(
+        "/api/v1/messages/send",
+        json={
+            "application_ids": [application_id],
+            "subject": "Görüşme daveti — {{ilan}}",
+            "body": "Merhaba {{aday}}, görüşme zamanı: {{tarih}}",
+            "template_slug": "interview_invite",
+            "when": "25.08.2026 14:00",
+        },
+    ).json()
+    assert result["calendar_attached"] is True
+
+    ics = sent_mail[0]["ics"]
+    assert ics is not None
+    assert "DTSTART;TZID=Europe/Istanbul:20260825T140000" in ics
+    assert "METHOD:REQUEST" in ics
+    assert "mailto:ayse@aksatek.com" in ics, "RSVP must reach the recruiter"
+    assert "Takvim Testi" in ics.replace("\r\n ", ""), "the event names the job"
+
+    # a rejection never carries a meeting, whatever fields are set
+    other = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()
+    cards = [c for col in other["columns"].values() for c in col] + other["tray"]
+    second = next(c["application_id"] for c in cards if c["application_id"] != application_id)
+    client.post(
+        "/api/v1/messages/send",
+        json={
+            "application_ids": [second],
+            "subject": "Başvurunuz hakkında",
+            "body": "Merhaba {{aday}}",
+            "template_slug": "rejection",
+            "when": "25.08.2026 14:00",
+        },
+    )
+    assert sent_mail[-1]["ics"] is None
+
+
+def test_an_unparseable_time_sends_the_letter_without_a_broken_invite(
+    client, storage_stub, fake_models, sent_mail
+):
+    """"yarın öğlen" is a fine thing to write in the letter and no basis for a
+    calendar event; the mail must still go, minus the attachment."""
+    job_id = _screened_job(client, storage_stub, "Takvim Testi B")
+    application_id = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()["tray"][0][
+        "application_id"
+    ]
+    result = client.post(
+        "/api/v1/messages/send",
+        json={
+            "application_ids": [application_id],
+            "subject": "Görüşme",
+            "body": "Merhaba {{aday}}, {{tarih}} görüşelim.",
+            "template_slug": "interview_invite",
+            "when": "yarın öğlen",
+        },
+    ).json()
+    assert result["sent"] and result["calendar_attached"] is False
+    assert sent_mail[0]["ics"] is None
+    assert "yarın öğlen" in sent_mail[0]["text"]
+
+
+# --------------------------------------------------------------------------- #
+# 13. Exports
+# --------------------------------------------------------------------------- #
+
+
+def test_the_ranking_exports_as_a_csv_turkish_excel_can_open(
+    client, storage_stub, fake_models
+):
+    job_id = _screened_job(client, storage_stub, "Dışa Aktarım Testi")
+    run_id = _latest_run(client, job_id)
+
+    response = client.get(f"/api/v1/runs/{run_id}/results.csv")
+    assert response.status_code == 200
+    assert "text/csv" in response.headers["content-type"]
+    assert "attachment" in response.headers["content-disposition"]
+
+    raw = response.content.decode("utf-8")
+    assert raw.startswith("﻿"), "no BOM → Turkish Excel garbles every İ/ş/ğ"
+    lines = raw.lstrip("﻿").splitlines()
+    header = lines[0].split(";")
+    assert header[:5] == ["Sıra", "Aday", "E-posta", "Puan", "Seviye"]
+    assert "En az 3 yıl deneyim" in lines[0], "requirement columns carry their Turkish labels"
+
+    body = "\n".join(lines[1:])
+    assert "Deniz Yılmaz" in body
+    assert "Kerem Aydın" in body, "rejected candidates are in the file too, not censored"
+    assert ";Elendi" in body
+    # decimal comma: Turkish Excel reads 87,5 as a number and 87.5 as text
+    import re as _re
+
+    scores = [line.split(";")[3] for line in lines[1:] if line]
+    assert all("." not in s for s in scores), scores
+    assert any(_re.fullmatch(r"\d+,\d", s) for s in scores), scores
+
+
+def test_the_pipeline_exports_the_status_report(client, storage_stub, fake_models):
+    job_id = _screened_job(client, storage_stub, "Dışa Aktarım Testi B")
+    tray = client.get(f"/api/v1/jobs/{job_id}/pipeline").json()["tray"]
+    ids = [c["application_id"] for c in tray]
+    client.post(f"/api/v1/jobs/{job_id}/pipeline/shortlist", json={"application_ids": ids})
+    client.patch(f"/api/v1/applications/{ids[0]}/stage", json={"stage": "interviewing"})
+    me = client.get("/api/v1/auth/me").json()["user"]
+    client.patch(
+        f"/api/v1/applications/{ids[0]}",
+        json={"owner_id": me["id"], "next_action": "Referans kontrolü",
+              "next_action_at": "2026-09-01T10:00:00+00:00"},
+    )
+
+    raw = client.get(f"/api/v1/jobs/{job_id}/pipeline.csv").content.decode("utf-8")
+    lines = raw.lstrip("﻿").splitlines()
+    assert lines[0].split(";")[:4] == ["Aday", "E-posta", "Puan", "Aşama"]
+    interviewing = next(line for line in lines[1:] if ";Görüşme;" in line)
+    assert "Ayşe Demir" in interviewing, "the owner column is filled"
+    assert "Referans kontrolü" in interviewing
+
+
+def test_exports_are_tenant_scoped(client, new_client, storage_stub, fake_models):
+    job_id = _screened_job(client, storage_stub, "Dışa Aktarım Testi C")
+    run_id = _latest_run(client, job_id)
+    outsider = new_client()
+    outsider.post(
+        "/api/v1/auth/signup",
+        json={
+            "company_name": "Beşinci Şirket", "name": "Ali Kurt",
+            "email": "ali@besinci.com", "password": "guclu-parola-555",
+        },
+    )
+    assert outsider.get(f"/api/v1/runs/{run_id}/results.csv").status_code == 404
+    assert outsider.get(f"/api/v1/jobs/{job_id}/pipeline.csv").status_code == 404

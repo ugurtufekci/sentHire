@@ -12,6 +12,9 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import type { MessagePreview, MessageTemplate, SendResult } from "@/lib/types";
 
+// Mirrors the backend's parse_when: day-first, as Turkish dates are written.
+const WHEN_PATTERN = /^\d{1,2}[./]\d{1,2}[./]\d{4}\s+\d{1,2}[:.]\d{2}$/;
+
 export default function MessageComposer({
   applicationIds,
   title,
@@ -161,6 +164,13 @@ export default function MessageComposer({
                 value={when}
                 onChange={(e) => setWhen(e.target.value)}
               />
+              {slug === "interview_invite" && (
+                <span className="tiny" style={{ display: "block", marginTop: 5 }}>
+                  {WHEN_PATTERN.test(when.trim())
+                    ? "✓ E-postaya takvim daveti eklenecek — aday tek dokunuşla takvimine kaydeder."
+                    : "GG.AA.YYYY SS:DD biçiminde yazarsanız e-postaya takvim daveti eklenir."}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -224,8 +234,9 @@ export default function MessageComposer({
           <div className="stack" style={{ marginTop: 14, gap: 8 }}>
             {result.sent.length > 0 && (
               <div className="notice accent">
-                {result.sent.length} mesaj gönderildi. Adaylar &ldquo;Temas kuruldu&rdquo;
-                aşamasına taşındı.
+                {result.sent.length} mesaj gönderildi
+                {result.calendar_attached ? ", takvim davetiyle birlikte" : ""}. Adaylar
+                &ldquo;Temas kuruldu&rdquo; aşamasına taşındı.
               </div>
             )}
             {result.skipped.map((s) => (

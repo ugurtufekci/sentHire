@@ -23,6 +23,7 @@ from senthire.db.models import (
 )
 from senthire.domain.ranking import equivalence_groups
 from senthire.domain.spec import EvaluationSpec
+from senthire.services import exports
 from senthire.services import overrides as override_service
 
 router = APIRouter(tags=["runs"])
@@ -295,3 +296,25 @@ def override_verdict(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     session.commit()
     return run_result_detail(run_id, application_id, org, session)
+
+
+@router.get("/runs/{run_id}/results.csv")
+def run_results_csv(
+    run_id: str,
+    org: Organization = Depends(get_org),
+    session: Session = Depends(get_db),
+):
+    """The ranking as a file Turkish Excel opens correctly (BOM + semicolons)."""
+    from urllib.parse import quote
+
+    from fastapi.responses import Response
+
+    run = _get_run(run_id, org, session)
+    filename, content = exports.run_results_csv(session, run)
+    return Response(
+        content=content.encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
+        },
+    )

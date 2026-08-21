@@ -131,7 +131,12 @@ def password_reset_email(reset_url: str, ttl_minutes: int) -> tuple[str, str, st
 
 
 def send_email(
-    to: str, subject: str, html: str, text: str, reply_to: str | None = None
+    to: str,
+    subject: str,
+    html: str,
+    text: str,
+    reply_to: str | None = None,
+    ics: str | None = None,
 ) -> None:
     """Deliver via the configured backend. Raises on SMTP failure (caller retries).
 
@@ -149,6 +154,16 @@ def send_email(
             message["Reply-To"] = reply_to
         message.set_content(text)
         message.add_alternative(html, subtype="html")
+        if ics:
+            # method=REQUEST in the content type is what makes mail clients
+            # render Accept/Decline instead of a bare file attachment.
+            message.add_attachment(
+                ics.encode("utf-8"),
+                maintype="text",
+                subtype="calendar",
+                filename="davet.ics",
+                params={"method": "REQUEST", "charset": "utf-8"},
+            )
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as smtp:
             if settings.smtp_starttls:
                 smtp.starttls()
@@ -157,6 +172,8 @@ def send_email(
             smtp.send_message(message)
         return
     # console backend: make links clickable straight from the logs
+    if ics:
+        text = text + "\n\n[takvim eki: davet.ics]"
     print(
         "\n".join(
             [

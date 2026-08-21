@@ -38,6 +38,7 @@ from senthire.db.models import (
     PipelineEvent,
     User,
 )
+from senthire.services import calendar
 from senthire.services.email import render_plain_email
 from senthire.workers.tasks.mail import enqueue_mail
 
@@ -229,6 +230,7 @@ def send(
     sender: User,
     template_slug: str | None,
     advance_stage: bool = True,
+    when: str | None = None,
 ) -> CandidateMessage:
     """Queue one message, record it, and move the card if the message implies it."""
     if rendered.blocked or not rendered.to_email:
@@ -247,8 +249,25 @@ def send(
     session.flush()
 
     html, text = render_plain_email(rendered.subject, rendered.body)
+    # An interview invitation with an unambiguous time carries a calendar
+    # invite: the meeting lands in the candidate's calendar with one tap, and
+    # Accept/Decline comes back to the recruiter's own mailbox via Reply-To.
+    ics = None
+    starts_at = calendar.parse_when(when) if template_slug == "interview_invite" else None
+    if starts_at is not None:
+        job = session.get(Job, application.job_id)
+        org = session.get(Organization, application.org_id)
+        ics = calendar.interview_ics(
+            summary=f"Görüşme — {job.title if job else ''} ({org.name if org else ''})",
+            starts_at=starts_at,
+            organizer_name=sender.name or sender.email,
+            organizer_email=sender.email,
+            attendee_email=rendered.to_email,
+            description=rendered.body,
+            uid=str(message.id),
+        )
     queued = enqueue_mail(
-        rendered.to_email, rendered.subject, html, text, reply_to=sender.email
+        rendered.to_email, rendered.subject, html, text, reply_to=sender.email, ics=ics
     )
     message.status = "queued" if queued else "failed"
     message.error = None if queued else "e-posta kuyruğuna alınamadı"

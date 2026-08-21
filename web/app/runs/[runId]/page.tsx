@@ -197,12 +197,17 @@ export default function RunPage() {
 
       {results && (
         <>
-          <h2 style={{ fontSize: 17, margin: "0 0 12px" }}>
-            Sıralama{" "}
-            <span className="tiny" style={{ fontWeight: 400 }}>
-              — satıra tıklayınca kanıtlarıyla tam döküm açılır
-            </span>
-          </h2>
+          <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 12 }}>
+            <h2 style={{ fontSize: 17, margin: 0 }}>
+              Sıralama{" "}
+              <span className="tiny" style={{ fontWeight: 400 }}>
+                — satıra tıklayınca kanıtlarıyla tam döküm açılır
+              </span>
+            </h2>
+            <a className="btn" href={`/api/v1/runs/${runId}/results.csv`} download>
+              Excel için indir
+            </a>
+          </div>
           <div className="card" style={{ padding: "6px 10px" }}>
             <div className="table-scroll">
               <table className="soft-table">

@@ -27,6 +27,7 @@ from senthire.db.models import (
     User,
 )
 from senthire.domain.spec import EvaluationSpec
+from senthire.services import exports
 from senthire.services import insights as insight_service
 
 router = APIRouter(tags=["pipeline"])
@@ -415,3 +416,27 @@ def job_insights(
         "insights": insight_service.summarize(corrections, calibration),
         "min_sample": insight_service.MIN_SAMPLE_FOR_RATE,
     }
+
+
+@router.get("/jobs/{job_id}/pipeline.csv")
+def pipeline_csv(
+    job_id: str,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    """The weekly status report, without anyone rebuilding it by hand."""
+    from urllib.parse import quote
+
+    from fastapi.responses import Response
+
+    job = session.get(Job, parse_uuid(job_id, "job_id"))
+    if job is None or job.org_id != user.org_id:
+        raise HTTPException(status_code=404, detail="job not found")
+    filename, content = exports.pipeline_csv(session, job)
+    return Response(
+        content=content.encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
+        },
+    )

@@ -150,7 +150,14 @@ export default function PipelinePage({ params }: { params: Promise<{ jobId: stri
       <p className="tiny" style={{ marginBottom: 6 }}>
         <Link href={`/jobs/${jobId}`}>← {board.job_title}</Link>
       </p>
-      <h1 className="page-title">Aday akışı</h1>
+      <div className="hstack" style={{ justifyContent: "space-between" }}>
+        <h1 className="page-title" style={{ marginBottom: 6 }}>
+          Aday akışı
+        </h1>
+        <a className="btn" href={`/api/v1/jobs/${jobId}/pipeline.csv`} download>
+          Durum raporunu indir
+        </a>
+      </div>
       <p className="page-sub">
         Değerlendirmeden geçen adayları seçin, görüşme sürecini sürükleyerek yönetin. Her
         hareket adayın zaman çizelgesine işlenir.

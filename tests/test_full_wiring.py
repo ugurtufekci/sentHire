@@ -261,6 +261,7 @@ def test_smtp_delivery_speaks_actual_smtp(monkeypatch):
     async def _serve():
         loop = asyncio.get_running_loop()
         loop_holder["loop"] = loop
+        loop_holder["stop"] = asyncio.Event()
 
         class Handler(asyncio.Protocol):
             def connection_made(self, transport):
@@ -296,7 +297,10 @@ def test_smtp_delivery_speaks_actual_smtp(monkeypatch):
         loop_holder["port"] = server.sockets[0].getsockname()[1]
         started.set()
         async with server:
-            await server.serve_forever()
+            # A cooperative shutdown: stopping the loop out from under
+            # serve_forever() leaves asyncio.run() mid-cleanup and surfaces as
+            # an unhandled-thread-exception warning in the test report.
+            await loop_holder["stop"].wait()
 
     thread = threading.Thread(target=lambda: asyncio.run(_serve()), daemon=True)
     thread.start()
@@ -309,6 +313,7 @@ def test_smtp_delivery_speaks_actual_smtp(monkeypatch):
 
     get_settings.cache_clear()
     try:
+        from senthire.services.calendar import interview_ics, parse_when
         from senthire.services.email import send_email
 
         send_email(
@@ -317,10 +322,18 @@ def test_smtp_delivery_speaks_actual_smtp(monkeypatch):
             "<p>Merhaba</p>",
             "Merhaba",
             reply_to="selin@dumanlojistik.com",
+            ics=interview_ics(
+                summary="Görüşme",
+                starts_at=parse_when("25.08.2026 14:00"),
+                organizer_name="Selin",
+                organizer_email="selin@dumanlojistik.com",
+                attendee_email="aday@example.com",
+            ),
         )
     finally:
         get_settings.cache_clear()
-        loop_holder["loop"].call_soon_threadsafe(loop_holder["loop"].stop)
+        loop_holder["loop"].call_soon_threadsafe(loop_holder["stop"].set)
+        thread.join(timeout=5)
 
     assert received, "nothing arrived over SMTP"
     message = message_from_bytes(received[0])
@@ -328,4 +341,10 @@ def test_smtp_delivery_speaks_actual_smtp(monkeypatch):
     assert message["Reply-To"] == "selin@dumanlojistik.com"
     assert "Görüşme daveti" in str(message["Subject"]) or "=?utf-8" in str(message["Subject"])
     parts = {part.get_content_type() for part in message.walk()}
-    assert {"text/plain", "text/html"} <= parts, f"missing alternative: {parts}"
+    assert {"text/plain", "text/html", "text/calendar"} <= parts, f"missing part: {parts}"
+    calendar_part = next(p for p in message.walk() if p.get_content_type() == "text/calendar")
+    assert calendar_part.get_param("method") == "REQUEST", (
+        "without method=REQUEST clients show a file, not Accept/Decline"
+    )
+    payload = calendar_part.get_payload(decode=True).decode("utf-8")
+    assert "DTSTART;TZID=Europe/Istanbul:20260825T140000" in payload

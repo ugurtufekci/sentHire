@@ -460,6 +460,8 @@ export interface MessagePreview {
 
 export interface SendResult {
   sent: { application_id: string; to_email: string; status: string }[];
+  /** True when the interview invite carried a .ics calendar attachment. */
+  calendar_attached?: boolean;
   skipped: {
     application_id: string;
     reason: string;

@@ -21,14 +21,24 @@ from senthire.workers.celery_app import celery_app
     max_retries=6,
 )
 def send_mail(
-    to: str, subject: str, html: str, text: str, reply_to: str | None = None
+    to: str,
+    subject: str,
+    html: str,
+    text: str,
+    reply_to: str | None = None,
+    ics: str | None = None,
 ) -> dict:
-    send_email(to, subject, html, text, reply_to=reply_to)
+    send_email(to, subject, html, text, reply_to=reply_to, ics=ics)
     return {"to": to, "subject": subject}
 
 
 def enqueue_mail(
-    to: str, subject: str, html: str, text: str, reply_to: str | None = None
+    to: str,
+    subject: str,
+    html: str,
+    text: str,
+    reply_to: str | None = None,
+    ics: str | None = None,
 ) -> bool:
     """Best-effort enqueue from API handlers.
 
@@ -36,7 +46,7 @@ def enqueue_mail(
     caller still has the raw link to show, so the request must not fail.
     """
     try:
-        send_mail.delay(to, subject, html, text, reply_to)
+        send_mail.delay(to, subject, html, text, reply_to, ics)
         return True
     except Exception:
         return False

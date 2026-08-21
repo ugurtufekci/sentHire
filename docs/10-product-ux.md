@@ -144,7 +144,14 @@ Screening ends with a ranked list; the hiring work continues for weeks. The boar
   received), and writing to the same person with the same template twice takes
   an explicit second confirmation. Sending records a contact event and moves
   the card to "Temas kuruldu" / "Olumsuz", so the board keeps telling the
-  truth.
+  truth. An interview invitation whose time is written as GG.AA.YYYY SS:DD
+  also carries a .ics calendar invite (METHOD:REQUEST, Europe/Istanbul, RSVP to
+  the recruiter), so the meeting lands in the candidate's calendar in one tap.
+- **Exports (shipped)**: the ranking and the pipeline download as CSV built for
+  Turkish Excel — UTF-8 BOM, semicolon separator, decimal comma — with
+  requirement verdicts as columns and rejected candidates included with their
+  reasons. The weekly status report managers ask for, without anyone rebuilding
+  it by hand.
 
 ## 10. Trust affordances (cross-cutting)
 

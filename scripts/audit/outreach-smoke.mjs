@@ -83,6 +83,11 @@ await step("görüşme zamanı yazınca mektuba işleniyor", async () => {
   );
 });
 
+await step("takvim daveti ekleneceği söyleniyor", async () => {
+  const hint = await page.textContent(".drawer");
+  if (!/takvim daveti eklenecek/.test(hint)) throw new Error("takvim ipucu yok");
+});
+
 await step("alıcı listesi kimlere gideceğini gösteriyor", async () => {
   const summary = await page.textContent(".drawer");
   const m = summary.match(/(\d+) kişiye gidecek/);
@@ -96,7 +101,8 @@ await step("gönder ve sonucu gör", async () => {
   await page.waitForSelector(".notice.accent", { timeout: 20000 });
   const notice = await page.textContent(".notice.accent");
   if (!/gönderildi/.test(notice)) throw new Error(notice);
-  return notice.replace(/\s+/g, " ").trim().slice(0, 60);
+  if (!/takvim davetiyle/.test(notice)) throw new Error("takvim eki onayı yok: " + notice);
+  return notice.replace(/\s+/g, " ").trim().slice(0, 70);
 });
 await page.screenshot({ path: `${OUT}/mail-2-gonderildi.png`, fullPage: false });
 
@@ -131,6 +137,29 @@ await step("aynı şablonu ikinci kez göndermek onay istiyor", async () => {
   return "uyardı ve onay istedi";
 });
 await page.screenshot({ path: `${OUT}/mail-4-tekrar.png`, fullPage: false });
+
+await step("sıralama CSV'si Türkçe Excel biçiminde iniyor", async () => {
+  const runUrl = page.url().includes("/runs/") ? page.url() : null;
+  const runsResp = await page.request.get(BASE + "/api/v1/jobs/" + jobUrl.split("/").pop() + "/runs");
+  const runId = (await runsResp.json())[0].run_id;
+  const resp = await page.request.get(BASE + `/api/v1/runs/${runId}/results.csv`);
+  if (resp.status() !== 200) throw new Error(`HTTP ${resp.status()}`);
+  const text = await resp.text();
+  if (!text.startsWith("\ufeff")) throw new Error("BOM yok — Türkçe Excel bozar");
+  if (!text.includes(";Puan;")) throw new Error("noktalı virgül ayracı yok");
+  const disposition = resp.headers()["content-disposition"] || "";
+  if (!/siralama-/.test(decodeURIComponent(disposition))) throw new Error(`dosya adı: ${disposition}`);
+  return decodeURIComponent(disposition).match(/filename\*=UTF-8''([^;]+)/)?.[1] ?? "ok";
+});
+
+await step("aday akışı CSV'si sorumlu ve sonraki adımı taşıyor", async () => {
+  const resp = await page.request.get(BASE + "/api/v1/jobs/" + jobUrl.split("/").pop() + "/pipeline.csv");
+  if (resp.status() !== 200) throw new Error(`HTTP ${resp.status()}`);
+  const text = await resp.text();
+  if (!/Aday;E-posta;Puan;Aşama/.test(text)) throw new Error("başlık satırı beklenen değil");
+  if (!/Temas kuruldu/.test(text)) throw new Error("aşama Türkçe değil");
+  return text.split("\n").length - 2 + " satır";
+});
 
 await browser.close();
 console.log(problems.length ? `\nSORUNLAR (${problems.length}):\n- ` + problems.join("\n- ") : "\nSorun yok.");
