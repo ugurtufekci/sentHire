@@ -153,8 +153,13 @@ def compute_derived(profile: ExtractedProfile, today: date | None = None) -> Der
         employment_gaps=gaps,
         max_employment_gap_months=max((g.months for g in gaps), default=0),
         current_employment_status=status,  # type: ignore[arg-type]
-        highest_degree_rank=max(
-            (DEGREE_RANK.get(e.degree or "", 0) for e in profile.education), default=0
+        # Missing education is a statement about the DOCUMENT, not the person:
+        # None routes predicates to "unknown" (review / weight redistribution),
+        # exactly like an unstated city. A stated degree keeps its rank.
+        highest_degree_rank=(
+            max(DEGREE_RANK.get(e.degree or "", 0) for e in profile.education)
+            if profile.education
+            else None
         ),
         seniority_estimate=_seniority(profile, total_months),  # type: ignore[arg-type]
     )

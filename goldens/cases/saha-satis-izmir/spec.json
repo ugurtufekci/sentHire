@@ -1,0 +1,200 @@
+{
+  "schema_version": "1.0",
+  "version": 1,
+  "locale": "tr",
+  "weights": {
+    "relevant_experience": 0.5,
+    "location": 0.2,
+    "language": 0.15,
+    "education": 0.15
+  },
+  "bonus_cap": 10.0,
+  "requirements": [
+    {
+      "req_id": "F1_experience_floor",
+      "category": "relevant_experience",
+      "label": {
+        "tr": "En az 2 yıl toplam deneyim",
+        "en": ">=2 years total experience"
+      },
+      "type": "hard",
+      "importance": "critical",
+      "evaluator": "deterministic",
+      "missing_policy": "unknown",
+      "source": {
+        "kind": "hr_text",
+        "original": "En az 2 yıl toplam deneyim"
+      },
+      "deterministic": {
+        "predicate": {
+          "field": "derived.total_experience_months",
+          "op": ">=",
+          "value": 24
+        },
+        "borderline_tolerance": 0.1
+      }
+    },
+    {
+      "req_id": "F2_field_sales_2y",
+      "category": "relevant_experience",
+      "label": {
+        "tr": "En az 2 yıl saha satışı deneyimi",
+        "en": ">=2 years of field sales"
+      },
+      "type": "hard",
+      "importance": "critical",
+      "evaluator": "semantic",
+      "missing_policy": "unknown",
+      "source": {
+        "kind": "hr_text",
+        "original": "En az 2 yıl saha satışı deneyimi"
+      },
+      "semantic": {
+        "rubric": "Verify at least 2 years of field sales (saha satışı) experience — visiting customers, route or territory work. Cite the roles and durations you counted.",
+        "target_field": "experience"
+      }
+    },
+    {
+      "req_id": "F3_dealer_network",
+      "category": "relevant_experience",
+      "label": {
+        "tr": "Bayi / distribütör ağı yönetimi",
+        "en": "Dealer / distributor network management"
+      },
+      "type": "scored",
+      "importance": "high",
+      "evaluator": "semantic",
+      "missing_policy": "unknown",
+      "source": {
+        "kind": "hr_text",
+        "original": "Bayi / distribütör ağı yönetimi"
+      },
+      "semantic": {
+        "rubric": "How deep is the candidate's dealer or distributor network management experience? Recruiting dealers, growing sell-through, running a region count; visiting shops to sell directly does not.",
+        "target_field": "experience"
+      }
+    },
+    {
+      "req_id": "F4_location_izmir",
+      "category": "location",
+      "label": {
+        "tr": "İzmir'de ikamet",
+        "en": "Based in İzmir"
+      },
+      "type": "scored",
+      "importance": "high",
+      "evaluator": "deterministic",
+      "missing_policy": "unknown",
+      "source": {
+        "kind": "hr_text",
+        "original": "İzmir'de ikamet"
+      },
+      "deterministic": {
+        "predicate": {
+          "field": "location.city_canonical",
+          "op": "==",
+          "value": "İzmir"
+        }
+      }
+    },
+    {
+      "req_id": "F5_education_bachelor",
+      "category": "education",
+      "label": {
+        "tr": "Lisans mezunu",
+        "en": "Bachelor's degree"
+      },
+      "type": "scored",
+      "importance": "high",
+      "evaluator": "deterministic",
+      "missing_policy": "unknown",
+      "source": {
+        "kind": "hr_text",
+        "original": "Lisans mezunu"
+      },
+      "deterministic": {
+        "predicate": {
+          "field": "education.highest_degree_rank",
+          "op": ">=",
+          "value": 3
+        }
+      }
+    },
+    {
+      "req_id": "F6_english_b1",
+      "category": "language",
+      "label": {
+        "tr": "İngilizce en az B1",
+        "en": "English at B1 or above"
+      },
+      "type": "scored",
+      "importance": "high",
+      "evaluator": "deterministic",
+      "missing_policy": "unknown",
+      "source": {
+        "kind": "hr_text",
+        "original": "İngilizce en az B1"
+      },
+      "deterministic": {
+        "predicate": {
+          "field": "languages['en'].cefr_rank",
+          "op": ">=",
+          "value": 3
+        }
+      }
+    },
+    {
+      "req_id": "F7_crm_bonus",
+      "category": "custom",
+      "label": {
+        "tr": "CRM aracı deneyimi avantaj",
+        "en": "CRM tool experience is a plus"
+      },
+      "type": "bonus",
+      "importance": "medium",
+      "evaluator": "deterministic",
+      "missing_policy": "unknown",
+      "source": {
+        "kind": "hr_text",
+        "original": "CRM aracı deneyimi avantaj"
+      },
+      "deterministic": {
+        "predicate": {
+          "field": "tools_technologies",
+          "op": "contains",
+          "value": [
+            "salesforce",
+            "hubspot",
+            "zoho",
+            "crm"
+          ]
+        }
+      },
+      "bonus_points": 5.0
+    },
+    {
+      "req_id": "F8_gap_penalty",
+      "category": "career_stability",
+      "label": {
+        "tr": "6 aydan uzun boşluk",
+        "en": "Employment gap longer than 6 months"
+      },
+      "type": "penalty",
+      "importance": "medium",
+      "evaluator": "deterministic",
+      "missing_policy": "unknown",
+      "source": {
+        "kind": "hr_text",
+        "original": "6 aydan uzun boşluk"
+      },
+      "deterministic": {
+        "predicate": {
+          "field": "derived.max_employment_gap_months",
+          "op": ">=",
+          "value": 6
+        },
+        "penalty_points": 6.0
+      }
+    }
+  ]
+}

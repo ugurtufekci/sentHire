@@ -1,0 +1,70 @@
+{
+  "golden_id": "f05-unknown-education",
+  "note": "No education section at all: the degree requirement must read as UNKNOWN (weight redistribution), never as a failed gate — missing is not negative. (Doctrine fixed the day the 220-CV rehearsal rejected everyone on an unstated degree.)",
+  "profile": {
+    "document_kind": "cv",
+    "language": "tr",
+    "location": {
+      "raw": "Karşıyaka / İzmir",
+      "city_canonical": "İzmir",
+      "country": "TR"
+    },
+    "experience": [
+      {
+        "title_raw": "Saha Satış Uzmanı",
+        "company": null,
+        "employment_type": "full_time",
+        "start": "2021-03",
+        "signals": {
+          "b2b": true
+        },
+        "is_current": true
+      }
+    ],
+    "education": [],
+    "skills": [],
+    "languages": [
+      {
+        "language": "tr",
+        "cefr": "native"
+      },
+      {
+        "language": "en",
+        "cefr": "B1",
+        "level_raw": "İngilizce B1"
+      }
+    ],
+    "tools_technologies": [],
+    "confidence": 0.9
+  },
+  "labels": {
+    "semantic": {
+      "F2_field_sales_2y": {
+        "verdict": "met",
+        "score": 1.0,
+        "confidence": 0.9,
+        "info_status": "explicit"
+      },
+      "F3_dealer_network": {
+        "verdict": "partially_met",
+        "score": 0.75,
+        "confidence": 0.8,
+        "info_status": "explicit"
+      }
+    },
+    "expected_deterministic": {
+      "F1_experience_floor": "met",
+      "F4_location_izmir": "met",
+      "F5_education_bachelor": "unknown",
+      "F6_english_b1": "met",
+      "F7_crm_bonus": "unknown",
+      "F8_gap_penalty": "not_met"
+    },
+    "gate": "pass",
+    "band": "top",
+    "score_range": [
+      80.9,
+      80.9
+    ]
+  }
+}

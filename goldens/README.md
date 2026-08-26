@@ -55,6 +55,18 @@ missing English (unknown → weight redistribution, never a penalty), a
 job-hopping penalty, a deterministic knockout, and an unverifiable hard
 requirement that must land in review instead of being rejected.
 
+## What the saha-satis-izmir case covers
+
+The layers the first case never touched, chosen from what the 220-CV
+rehearsal and real-CV formats will stress: overlapping roles that must merge
+instead of double-counting (proven at the gate — the sum passes the floor,
+the union does not), "halen" month-precision that lands inside the borderline
+tolerance, an employment-gap penalty, adjacent roles merging without a
+phantom gap, a deterministic bonus truncated by the 100-point ceiling, an
+UNSTATED education section reading as unknown (weight redistribution, never
+a failed "Lisans mezunu" gate), a scored language miss at A2 vs a B1 bar,
+and a district-raw / canonical-city location.
+
 ## Adding cases
 
 Copy an existing case directory, keep candidate files small and readable, and

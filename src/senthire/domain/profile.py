@@ -158,7 +158,9 @@ class DerivedFields(_Strict):
     employment_gaps: list[EmploymentGap] = []
     max_employment_gap_months: int = 0
     current_employment_status: Literal["employed", "unemployed", "unknown"] = "unknown"
-    highest_degree_rank: int = 0  # 0 none … 5 doctorate
+    # None = education never stated (missing != negative: predicates read it
+    # as unknown, like an unstated city); 1..5 rank an actual statement.
+    highest_degree_rank: int | None = None
     seniority_estimate: Literal["junior", "mid", "senior", "lead", "unknown"] = "unknown"
 
 

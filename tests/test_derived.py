@@ -106,3 +106,37 @@ def test_degree_rank_and_seniority():
     )
     assert d.highest_degree_rank == 4
     assert d.seniority_estimate == "senior"
+
+
+def test_unstated_education_is_none_not_zero():
+    """Missing != negative: an empty education list must read as "the document
+    does not say", which predicates turn into unknown — never into a failed
+    "Lisans mezunu" gate. (Caught by the 220-CV rehearsal: every synthetic CV
+    was rejected on a rank the extractor had folded to 0.)"""
+    from senthire.domain.derived import compute_derived
+    from senthire.domain.predicates import evaluate
+    from senthire.domain.profile import ExtractedProfile
+
+    profile = ExtractedProfile.model_validate({"document_kind": "cv", "language": "tr"})
+    derived = compute_derived(profile)
+    assert derived.highest_degree_rank is None
+
+    doc = {"derived": {"highest_degree_rank": None}}
+    verdict = evaluate(
+        {"field": "education.highest_degree_rank", "op": ">=", "value": 3}, doc
+    )
+    assert verdict == "unknown"
+
+
+def test_stated_education_keeps_its_rank():
+    from senthire.domain.derived import compute_derived
+    from senthire.domain.profile import ExtractedProfile
+
+    profile = ExtractedProfile.model_validate(
+        {
+            "document_kind": "cv",
+            "language": "tr",
+            "education": [{"degree": "high_school"}],
+        }
+    )
+    assert compute_derived(profile).highest_degree_rank == 1

@@ -1,0 +1,89 @@
+{
+  "golden_id": "f04-strong-with-crm-bonus",
+  "note": "Adjacent roles merge into one 88-month block (no phantom gap at the month boundary); Salesforce triggers the deterministic bonus, which the 100-point ceiling then truncates to +2.5 over f06.",
+  "profile": {
+    "document_kind": "cv",
+    "language": "tr",
+    "location": {
+      "raw": "Karşıyaka / İzmir",
+      "city_canonical": "İzmir",
+      "country": "TR"
+    },
+    "experience": [
+      {
+        "title_raw": "Saha Satış Uzmanı",
+        "company": null,
+        "employment_type": "full_time",
+        "start": "2019-05",
+        "signals": {
+          "b2b": true
+        },
+        "end": "2024-04"
+      },
+      {
+        "title_raw": "Kıdemli Saha Satış Uzmanı",
+        "company": null,
+        "employment_type": "full_time",
+        "start": "2024-05",
+        "signals": {
+          "b2b": true
+        },
+        "is_current": true
+      }
+    ],
+    "education": [
+      {
+        "degree": "bachelor",
+        "field_raw": "İşletme",
+        "institution": "Ege Üniversitesi",
+        "end_year": 2018
+      }
+    ],
+    "skills": [],
+    "languages": [
+      {
+        "language": "tr",
+        "cefr": "native"
+      },
+      {
+        "language": "en",
+        "cefr": "B2",
+        "level_raw": "İngilizce B2"
+      }
+    ],
+    "tools_technologies": [
+      "salesforce"
+    ],
+    "confidence": 0.9
+  },
+  "labels": {
+    "semantic": {
+      "F2_field_sales_2y": {
+        "verdict": "met",
+        "score": 1.0,
+        "confidence": 0.95,
+        "info_status": "explicit"
+      },
+      "F3_dealer_network": {
+        "verdict": "met",
+        "score": 1.0,
+        "confidence": 0.9,
+        "info_status": "explicit"
+      }
+    },
+    "expected_deterministic": {
+      "F1_experience_floor": "met",
+      "F4_location_izmir": "met",
+      "F5_education_bachelor": "met",
+      "F6_english_b1": "met",
+      "F7_crm_bonus": "met",
+      "F8_gap_penalty": "not_met"
+    },
+    "gate": "pass",
+    "band": "top",
+    "score_range": [
+      100.0,
+      100.0
+    ]
+  }
+}

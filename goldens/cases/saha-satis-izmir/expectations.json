@@ -1,0 +1,24 @@
+{
+  "note": "Order pairs are asserted only where the gap exceeds a rung: f04>f06 is exactly the CRM bonus, f06>f03 is a dealer-network rung plus the gap penalty, f03>f07 is education+language rungs. f05 (unknown education, redistributed) is deliberately unordered against its neighbours — redistribution arithmetic is the scorer's business, not the suite's.",
+  "as_of": "2026-08-01",
+  "top_k": 2,
+  "expected_top": [
+    "f04-strong-with-crm-bonus",
+    "f06-master-no-crm"
+  ],
+  "expected_order_pairs": [
+    [
+      "f04-strong-with-crm-bonus",
+      "f06-master-no-crm"
+    ],
+    [
+      "f06-master-no-crm",
+      "f03-gap-penalty"
+    ],
+    [
+      "f03-gap-penalty",
+      "f07-english-a2"
+    ]
+  ],
+  "fairness_pairs": []
+}
