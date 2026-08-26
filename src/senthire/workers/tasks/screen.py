@@ -56,6 +56,24 @@ def _session() -> Session:
     return get_sessionmaker()()
 
 
+def run_versions() -> dict:
+    """The stack that produced a run: prompt labels, model tiers, vocabulary
+    and pipeline code version — enough to attribute any change in outcomes.
+    Stamped into the run funnel; shadow re-evaluations compare against it."""
+    from senthire.normalize.tables import version_signature
+
+    settings = get_settings()
+    return {
+        "pipeline": PIPELINE_VERSION,
+        "prompts": {key: settings.prompt_versions[key] for key in ("light", "deep")},
+        "models": {
+            "light": settings.light_screen_model,
+            "deep": settings.deep_analysis_model,
+        },
+        "vocabulary": version_signature(),
+    }
+
+
 def _audit_llm(
     session: Session, org_id, run_id, stage: str, usage, transport: str = "interactive"
 ) -> None:
@@ -975,6 +993,10 @@ def score_run(run_id: str) -> dict:
                 "consistency": discrimination_report(
                     spec, [(ev.result or {}).get("verdicts", {}) for ev, _ in rescored]
                 ),
+                # Provenance: which prompts, models and vocabulary produced
+                # these verdicts. Per-call detail lives in the llm.call audit
+                # trail; this is the run-level stamp shadow diffs compare.
+                "versions": run_versions(),
             }
         )
         run.funnel = funnel

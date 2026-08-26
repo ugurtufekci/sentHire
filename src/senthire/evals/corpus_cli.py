@@ -28,6 +28,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from senthire.config import get_settings
 from senthire.domain.spec import EvaluationSpec
 from senthire.evals import autolabel
 from senthire.evals.corpus import LabelSet, Pool, make_case, read_json, write_json
@@ -123,6 +124,9 @@ def cmd_label(args) -> int:
         "model": "fake" if args.fake_oracle else (args.oracle_model or _oracle_model()),
         "lenses": list(autolabel.LENSES),
         "min_agreement": args.min_agreement,
+        # Labels outlive prompts; without this stamp two label batches produced
+        # by different oracle wordings would be indistinguishable.
+        "prompt_version": get_settings().prompt_versions["oracle"],
     }
     report = autolabel.LabelingReport()
     queue: list[dict] = []

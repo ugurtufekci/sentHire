@@ -113,11 +113,15 @@ class Settings(BaseSettings):
     # deployments are cookie-session only; docker-compose sets it for local dev.
     dev_api_key: str | None = None
 
+    # One label per prompt component, stamped onto everything that component
+    # produces. Bound to the actual prompt text by senthire.prompt_registry —
+    # editing a template without bumping its label here fails the build.
     prompt_versions: dict[str, str] = {
         "extract": "extract_v1",
         "compile": "compile_v1",
         "light": "screen_v1",
         "deep": "verify_v1",
+        "oracle": "oracle_v1",
     }
 
 
