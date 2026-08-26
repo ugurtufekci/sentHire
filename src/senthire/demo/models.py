@@ -40,6 +40,62 @@ YEARS_WANTED = re.compile(r"(\d{1,2})\s*(?:\+\s*)?y[ıi]l")
 # exactly the shape ("=== Page 1 ===") a naive name heuristic mistakes for one.
 PAGE_MARKER = re.compile(r"^=+\s*(page|sayfa)\s*\d+\s*=+$", re.I)
 
+# Section-aware reading: a CV line means different things under different
+# headers — "ODTÜ — İşletme (Lisans), 2012 - 2016" is education, not a job,
+# and counting it as employment both invents experience months and hides the
+# degree every "Lisans mezunu" gate needs.
+SECTION_HEADERS = {
+    "experience": ("deneyim", "is deneyimi", "calisma gecmisi", "profesyonel deneyim"),
+    "education": ("egitim", "egitim bilgileri", "akademik gecmis", "ogrenim"),
+    "language": ("dil", "diller", "yabanci dil", "yabanci diller"),
+}
+
+# Ordered: the longer phrase must win before its substring does.
+DEGREE_LEVELS = (
+    ("doktora", "doctorate"),
+    ("yuksek lisans", "master"),
+    ("on lisans", "associate"),
+    ("onlisans", "associate"),
+    ("lisans", "bachelor"),
+    ("lise", "high_school"),
+)
+
+
+def _section_of(line: str) -> str | None:
+    folded = fold(line).rstrip(":").strip()
+    for name, keys in SECTION_HEADERS.items():
+        if folded in keys:
+            return name
+    return None
+
+
+def _degree_level(line: str) -> str | None:
+    folded = fold(line)
+    for key, level in DEGREE_LEVELS:
+        if key in folded:
+            return level
+    return None
+
+
+def _education_entry(line: str) -> dict:
+    match = YEAR_RANGE.search(line)
+    start_year = end_year = None
+    if match:
+        start_year = int(match.group(0)[:4])
+        end_raw = match.group(2)
+        end_year = int(end_raw) if end_raw[:2].isdigit() else None
+    body = YEAR_RANGE.sub("", line).strip(" ,-–|")
+    institution, _, rest = body.partition("—")
+    field_raw = rest.split("(")[0].strip(" ,") or None
+    return {
+        "degree": _degree_level(line) or "other",
+        "field_raw": field_raw,
+        "institution": institution.strip(" ,") or None,
+        "start_year": start_year,
+        "end_year": end_year,
+        "provenance": {"page": 1, "quote": line[:160]},
+    }
+
 STOPWORDS = {"ile", "ve", "veya", "olan", "bir", "için", "gibi", "daha", "çok", "en"}
 
 
@@ -121,8 +177,23 @@ def extract_pdf(data: bytes, *, escalated: bool = False):
             break
 
     experience = []
+    education = []
+    section = None
     for line in lines:
+        header = _section_of(line)
+        if header:
+            section = header
+            continue
         if not YEAR_RANGE.search(line):
+            if section == "education" and _degree_level(line):
+                education.append(_education_entry(line))
+            continue
+        # A dated line is education when the section says so — or, on a CV
+        # without headers, when it names a degree level.
+        if section == "education" or (section is None and _degree_level(line)):
+            education.append(_education_entry(line))
+            continue
+        if section == "language":
             continue
         match = YEAR_RANGE.search(line)
         start = match.group(0).split("-")[0].strip()[:4]
@@ -171,6 +242,7 @@ def extract_pdf(data: bytes, *, escalated: bool = False):
                 "country": "TR" if location.province else None,
             },
             "experience": experience,
+            "education": education,
             "languages": language_skills,
             "skills": [],
             # Honest about itself: a heuristic reader is not a confident one.

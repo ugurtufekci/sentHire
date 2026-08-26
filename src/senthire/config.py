@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     deep_band_extra: int = 10  # decision band = ranks 1..(top_k + extra)
     deep_confidence_threshold: float = 0.7
     deep_weight_threshold: float = 0.10  # req weight share that makes low confidence matter
+    # Hard ceiling on candidates entering Stage 5 per run. Without it, a run
+    # where the light model hedges everywhere sends the whole cohort deep and
+    # borderline voting multiplies the bill. The decision band always enters
+    # even if it alone exceeds the cap.
+    deep_cap: int = 40
 
     # --- auth & sessions ---
     session_cookie_name: str = "senthire_session"

@@ -519,6 +519,7 @@ def finalize_run(run_id: str) -> dict:
             band_extra=settings.deep_band_extra,
             confidence_threshold=settings.deep_confidence_threshold,
             weight_threshold=settings.deep_weight_threshold,
+            cap=settings.deep_cap,
         )
         funnel = dict(run.funnel or {})
         funnel["deep_pending"] = [p.application_id for p in selected]

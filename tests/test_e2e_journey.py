@@ -1602,6 +1602,7 @@ def test_run_health_surfaces_and_recover_is_safe_on_a_finished_run(client, stora
     assert status["status"] == "complete"
     assert status["stalled"] is False
     assert status["last_activity_at"], "a finished run has a progress clock"
+    assert "deep_reasons" not in status["funnel"], "internal bookkeeping stays internal"
 
     recovered = client.post(f"/api/v1/runs/{run_id}/recover")
     assert recovered.status_code == 202

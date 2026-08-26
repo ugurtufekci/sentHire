@@ -111,3 +111,17 @@ The architecture scales by widening, not rearchitecting:
 Every architectural decision above exists in service of moving #1 up while holding #2
 down; if a future change can't say which of the two it improves, it probably doesn't
 belong in the pipeline.
+
+## Measured: the 220-CV rehearsal (offline stack, 8 workers)
+
+Upload 220 PDFs (browser-style, 4 parallel PUTs) ~20 s; parse fan-out 3.1 s;
+screening run 4.1 s end-to-end. Hot endpoints at 220 candidates: candidates
+45 ms / 90 KB, results 130 ms / 86 KB, board 77 ms / 63 KB, run status 10 ms /
+3.3 KB — constant query counts (6–8 statements) on all of them, so no
+pagination is needed at this scale; revisit past ~1000 candidates per job.
+
+What the rehearsal caught (both fixed): the offline extractor never parsed
+education, so a template's "Lisans mezunu" hard gate rejected 220 of 220 —
+and the same dated line was counted as employment; and Stage 5 selection had
+no ceiling, so a cohort-wide low-confidence run sent all 220 candidates deep
+(now capped by `deep_cap`, band first, uncertainty in severity order).

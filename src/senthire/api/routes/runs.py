@@ -134,6 +134,9 @@ def run_status(
         ).all()
     )
     funnel = dict(run.funnel or {})
+    # Internal bookkeeping, not status: at 220 candidates this map alone made
+    # every 2-second UI poll carry ~15 KB of reasons nobody renders.
+    funnel.pop("deep_reasons", None)
     funnel["by_stage"] = by_stage
     funnel["evaluated_so_far"] = sum(by_stage.values())
     last_activity = run_health.last_activity_at(session, run)

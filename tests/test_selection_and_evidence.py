@@ -66,6 +66,57 @@ def test_borderline_always_selected():
     assert "borderline_hard_filter" in edge.reasons
 
 
+def test_cap_bounds_uncertainty_but_never_the_band():
+    """The 220-CV rehearsal sent the whole cohort deep when the light model
+    hedged everywhere; the cap is the ceiling that prevents that bill."""
+    prelims = [_prelim(f"a{i}", s=1 - i * 0.01, conf=0.4) for i in range(30)]
+    selected = select_for_deep(
+        _spec(), prelims, top_k=2, band_extra=1,
+        confidence_threshold=0.7, weight_threshold=0.1, cap=5,
+    )
+    assert len(selected) == 5
+    ids = {p.application_id for p in selected}
+    assert {"a0", "a1", "a2"} <= ids, "the decision band always enters"
+    # overflow slots go to the strongest uncertain candidates, deterministically
+    assert ids == {"a0", "a1", "a2", "a3", "a4"}
+
+
+def test_cap_prioritizes_a_possibly_wrong_knockout_over_hedging():
+    prelims = [_prelim(f"a{i}", s=1 - i * 0.01, conf=0.4) for i in range(6)]
+    prelims.append(_prelim("edge", s=0.05, borderline=True))
+    selected = select_for_deep(
+        _spec(), prelims, top_k=1, band_extra=0,
+        confidence_threshold=0.7, weight_threshold=0.1, cap=2,
+    )
+    ids = {p.application_id for p in selected}
+    assert ids == {"a0", "edge"}, (
+        "with one overflow slot, the borderline knockout must win it"
+    )
+
+
+def test_cap_never_blocks_reason_accumulation_for_the_selected():
+    prelims = [_prelim("a0", s=0.9, conf=0.3, borderline=True)]
+    prelims += [_prelim(f"b{i}", s=0.5, conf=0.3) for i in range(5)]
+    selected = select_for_deep(
+        _spec(), prelims, top_k=1, band_extra=0,
+        confidence_threshold=0.7, weight_threshold=0.1, cap=1,
+    )
+    a0 = next(p for p in selected if p.application_id == "a0")
+    assert "decision_band" in a0.reasons
+    assert "borderline_hard_filter" in a0.reasons
+    assert "low_confidence_on_heavy_requirement" in a0.reasons
+    assert len(selected) == 1
+
+
+def test_no_cap_keeps_the_old_behavior():
+    prelims = [_prelim(f"a{i}", s=1 - i * 0.01, conf=0.4) for i in range(30)]
+    selected = select_for_deep(
+        _spec(), prelims, top_k=2, band_extra=1,
+        confidence_threshold=0.7, weight_threshold=0.1,
+    )
+    assert len(selected) == 30
+
+
 def test_reasons_accumulate_without_duplication():
     prelims = [_prelim("a0", s=0.9, conf=0.3, borderline=True)]
     selected = _select(prelims, top_k=1, band_extra=0)
