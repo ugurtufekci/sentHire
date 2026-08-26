@@ -170,6 +170,32 @@ with the hand-checked labels drops — catching provider-side model changes
 before a customer does. For "what would the new stack change on a real run",
 see the shadow tool: `python -m senthire.evals.shadow RUN_ID`.
 
+### Pending one-time activation steps (owner action needed)
+
+Everything below is built and tested as far as this environment allows; each
+item needs one manual action by a repository owner to go fully live. Verified
+so far: the watchdog's key-check script (both branches, locally), three green
+CI runs, and the live-grading code path against fake models — what has NOT
+run yet is the drift workflow end-to-end on GitHub and any call against the
+real Anthropic API.
+
+1. **Add the `ANTHROPIC_API_KEY` repository secret** (GitHub → Settings →
+   Secrets and variables → Actions). Until then the drift watchdog skips
+   with a warning on every scheduled run — a skipping watchdog is not
+   watching.
+2. **Run "Model drift watch" once by hand** (Actions tab → Model drift
+   watch → Run workflow). This is the first end-to-end execution of the
+   workflow AND the first live-API validation of the explicit-temperature
+   calls, and it prints the first real agreement percentage. The API
+   integration used from automation here cannot trigger it (no
+   `actions: write`), so it must be a human click.
+3. The daily cron arms itself automatically once `drift.yml` reaches the
+   default branch (a branch-merge side effect — no action beyond merging).
+4. *Optional:* prove CI turns red by pushing a deliberately failing test to
+   a throwaway branch and watching the run fail. Step-failure propagation
+   is GitHub's own mechanic and the silent-skip hole is already guarded, so
+   this is belt-and-suspenders, not a gap.
+
 ## Offline demo mode
 
 `SENTHIRE_FAKE_MODELS=1` serves every model call from `senthire.demo` instead
