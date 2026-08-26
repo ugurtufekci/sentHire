@@ -26,8 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
@@ -53,7 +53,7 @@ jobs:
         run: python -m senthire.evals --live --min-agreement 0.85 --json drift-report.json
       - name: Keep the report
         if: always() && steps.key.outputs.present == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: drift-report
           path: drift-report.json
