@@ -1,0 +1,59 @@
+# Daily canary against silent model drift: the provider can retune or
+# re-route a model without us changing a line, and the first person to
+# notice must not be a customer. Runs the golden scenarios against the LIVE
+# light-screening model and fails (→ GitHub notifies on scheduled-run
+# failure) when exact agreement with the hand-checked labels drops below
+# the threshold. Costs cents per run.
+#
+# Two operational notes:
+# - GitHub only fires cron for workflows on the DEFAULT branch, so the
+#   schedule arms itself when this file lands there. Until then (and any
+#   time in between) it can be run by hand from the Actions tab.
+# - Without the ANTHROPIC_API_KEY secret the job skips with a loud warning
+#   instead of failing, so forks and keyless checkouts stay green — but a
+#   skipped watchdog is not a watching one; the warning says exactly that.
+
+name: Model drift watch
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  drift:
+    name: golden agreement vs live model
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Check for the API key
+        id: key
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::ANTHROPIC_API_KEY secret is not set — the drift watch did NOT run. Add the repository secret to arm it."
+          fi
+      - name: Install
+        if: steps.key.outputs.present == 'true'
+        run: pip install -e ".[dev]"
+      - name: Grade the live model against the golden labels
+        if: steps.key.outputs.present == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m senthire.evals --live --min-agreement 0.85 --json drift-report.json
+      - name: Keep the report
+        if: always() && steps.key.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: drift-report.json

@@ -163,6 +163,13 @@ that moved. Live mode reports an exact-agreement rate against
 `--min-agreement` (default 85%) plus token usage — run it before shipping prompt
 or model changes.
 
+Live mode is also the drift watchdog: `.github/workflows/drift.yml` runs it on
+a daily schedule (once the `ANTHROPIC_API_KEY` repository secret is set and the
+file is on the default branch) and fails loudly when the live model's agreement
+with the hand-checked labels drops — catching provider-side model changes
+before a customer does. For "what would the new stack change on a real run",
+see the shadow tool: `python -m senthire.evals.shadow RUN_ID`.
+
 ## Offline demo mode
 
 `SENTHIRE_FAKE_MODELS=1` serves every model call from `senthire.demo` instead

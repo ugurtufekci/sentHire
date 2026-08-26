@@ -20,3 +20,4 @@ corpus/**/*.salt
 
 # Redis snapshot from a local dev server
 dump.rdb
+drift-report.json
