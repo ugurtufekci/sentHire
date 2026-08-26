@@ -1,6 +1,7 @@
 """Screening runs: start, watch the funnel, read ranked results (docs/01 §3–4)."""
 
 import uuid
+from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -23,7 +24,7 @@ from senthire.db.models import (
 )
 from senthire.domain.ranking import equivalence_groups
 from senthire.domain.spec import EvaluationSpec
-from senthire.services import exports
+from senthire.services import exports, run_health
 from senthire.services import overrides as override_service
 
 router = APIRouter(tags=["runs"])
@@ -135,6 +136,7 @@ def run_status(
     funnel = dict(run.funnel or {})
     funnel["by_stage"] = by_stage
     funnel["evaluated_so_far"] = sum(by_stage.values())
+    last_activity = run_health.last_activity_at(session, run)
     return {
         "run_id": str(run.id),
         "job_id": str(run.job_id),
@@ -144,7 +146,25 @@ def run_status(
         "cost": run.cost or {},
         "started_at": run.started_at.isoformat() if run.started_at else None,
         "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+        # Progress clock: silence beyond the budget marks the run stalled and
+        # the UI offers an idempotent re-kick (services.run_health).
+        "last_activity_at": last_activity.isoformat() if last_activity else None,
+        "stalled": run_health.is_stalled(run, last_activity, datetime.now(UTC)),
     }
+
+
+@router.post("/runs/{run_id}/recover", status_code=202)
+def recover_run(
+    run_id: str,
+    org: Organization = Depends(get_org),
+    session: Session = Depends(get_db),
+) -> dict:
+    """Re-issue whatever messages a stranded run is missing. Safe on a healthy
+    run: every re-issued task guards on status or skips finished work."""
+    run = _get_run(run_id, org, session)
+    actions = run_health.recover(session, run)
+    session.refresh(run)
+    return {"run_id": str(run.id), "status": run.status, "actions": actions}
 
 
 def _headline(result: dict) -> dict:

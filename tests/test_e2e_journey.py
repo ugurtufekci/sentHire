@@ -1592,6 +1592,23 @@ def test_the_deep_analysis_stage_actually_runs(client, storage_stub, deep_models
     assert status["cost"]["deep"]["calls"] == 1, status["cost"]
 
 
+def test_run_health_surfaces_and_recover_is_safe_on_a_finished_run(client, storage_stub, fake_models):
+    """The status endpoint carries the progress clock, and re-kicking a
+    healthy run is a documented no-op — the UI button can never hurt."""
+    job_id = _screened_job(client, storage_stub, "Sağlık Kontrolü Testi")
+    run_id = _latest_run(client, job_id)
+
+    status = client.get(f"/api/v1/runs/{run_id}").json()
+    assert status["status"] == "complete"
+    assert status["stalled"] is False
+    assert status["last_activity_at"], "a finished run has a progress clock"
+
+    recovered = client.post(f"/api/v1/runs/{run_id}/recover")
+    assert recovered.status_code == 202
+    body = recovered.json()
+    assert body["status"] == "complete" and body["actions"] == []
+
+
 @pytest.mark.parametrize("with_deep", [False, True], ids=["light", "deep"])
 def test_a_cv_that_instructs_the_evaluator_is_flagged_but_not_penalized(
     client, storage_stub, fake_models, monkeypatch, with_deep, request

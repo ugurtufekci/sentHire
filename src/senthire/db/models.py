@@ -344,10 +344,20 @@ class ScreeningRun(Base):
     cost: Mapped[dict] = mapped_column(JSONB, server_default=JSONB_EMPTY_OBJ)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Birth time, distinct from started_at: a run whose start task was lost
+    # sits in "queued" with started_at NULL, and stall detection needs a
+    # clock to measure that silence against.
+    created_at: Mapped[datetime] = created_at_col()
 
 
 class Evaluation(Base):
     __tablename__ = "evaluations"
+    # One verdict per candidate per run, enforced by the database: the task
+    # layer checks-then-inserts, and a recovery re-kick racing an in-flight
+    # worker must produce an IntegrityError, not a duplicate ranking row.
+    __table_args__ = (
+        UniqueConstraint("run_id", "application_id", name="uq_evaluations_run_application"),
+    )
     __table_args__ = (UniqueConstraint("run_id", "application_id"),)
 
     id: Mapped[uuid.UUID] = uuid_pk()

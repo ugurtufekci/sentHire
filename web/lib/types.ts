@@ -195,6 +195,8 @@ export interface RunStatus {
   job_id: string;
   status: RunPhase;
   mode: string;
+  stalled?: boolean;
+  last_activity_at?: string | null;
   funnel: {
     total?: number;
     memoized?: number;

@@ -112,3 +112,31 @@ Nothing ever silently serves stale results against a newer spec.
 | Worker crash mid-task | Acks-late ⇒ redelivery; state machine + task keys ⇒ no double spend |
 | Model/prompt upgrade | New `pipeline_version` ⇒ memo keys change; historical evaluations untouched; re-screening is an explicit, budgeted action, never automatic |
 | Postgres failover / deploys | Workers are stateless; tasks resume from state machine; SSE reconnects re-read counters |
+
+## 7. Run health: stall detection and recovery
+
+Celery messages are hints and the database is the state machine (docs/02) —
+which means a lost message strands a run in a non-terminal status with
+nothing left to advance it: a start task that never arrived, workers dying
+mid-fan-out, the deep enqueue loop crashing right after the phase advanced,
+a batch poll chain that broke. The recruiter sees a spinner forever.
+
+Detection is read-side: every status has a progress clock — run birth
+(`created_at`, migration 0011), start, the latest evaluation, the latest
+batch poll heartbeat (`funnel.batch.<stage>.last_poll_at`) — and silence
+beyond the budget (`run_stall_after_seconds`, or
+`batch_stall_after_seconds` while waiting on a submitted batch) marks the
+run `stalled` in the status endpoint. No scheduler process: the check runs
+when someone looks, which is exactly when it matters.
+
+Recovery (`POST /runs/{id}/recover`) re-issues only the missing messages:
+the start task for a queued run, screening tasks for candidates without an
+evaluation, the finalize/score task for a phase whose driver died, the poll
+task (with the recorded batch id — never a re-submit, so never double
+spend) for a broken batch chain. Every re-issued task guards on run status
+or skips finished work, so recovering a healthy run is a no-op with an
+audit entry. The one true race — a re-kick passing a still-alive worker —
+is settled by the database: evaluations are unique per (run, application),
+and the loser's insert resolves to "already evaluated", not a duplicate
+ranking row. A batch run stranded before its batch was submitted falls back
+to the interactive lane for the stragglers: dearer, but the run finishes.

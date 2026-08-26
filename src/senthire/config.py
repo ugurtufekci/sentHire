@@ -113,6 +113,16 @@ class Settings(BaseSettings):
     # deployments are cookie-session only; docker-compose sets it for local dev.
     dev_api_key: str | None = None
 
+    # --- run health (stall detection, docs/08 §7) ---
+    # An interactive run whose progress clock is silent for this long is
+    # surfaced as stalled and can be re-kicked idempotently.
+    run_stall_after_seconds: int = 600
+    # Batch phases legitimately wait on the provider; their silence budget is
+    # the poll cadence, not the screening cadence. The poll task stamps
+    # funnel.batch.<stage>.last_poll_at on every poll — an hour without one
+    # means the poll chain itself died.
+    batch_stall_after_seconds: int = 3600
+
     # --- judgment sampling (docs/07 §7) ---
     # Explicit temperature for every judge call: repeatability is a decision,
     # not a provider default. Low, not zero — anchored scales do the real

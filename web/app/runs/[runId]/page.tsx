@@ -56,6 +56,7 @@ export default function RunPage() {
   const [open, setOpen] = useState<ResultRow | null>(null);
   const [showRejected, setShowRejected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recovering, setRecovering] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
@@ -132,6 +133,29 @@ export default function RunPage() {
           </>
         )}
       </p>
+      {run?.stalled && (
+        <div className="notice warn" style={{ marginBottom: 16 }} data-testid="stalled-banner">
+          <strong>Tarama ilerlemiyor görünüyor.</strong> Arka plandaki bir görev
+          kaybolmuş olabilir; kaldığı yerden güvenle devam ettirilebilir — biten
+          adaylar yeniden taranmaz, ücret tekrarlanmaz.
+          <button
+            className="btn"
+            style={{ marginLeft: 12 }}
+            disabled={recovering}
+            onClick={async () => {
+              setRecovering(true);
+              try {
+                await api.recoverRun(runId);
+                await refresh();
+              } finally {
+                setRecovering(false);
+              }
+            }}
+          >
+            {recovering ? "Devam ettiriliyor…" : "Kaldığı yerden devam et"}
+          </button>
+        </div>
+      )}
 
       {error && <div className="notice bad">{error}</div>}
 

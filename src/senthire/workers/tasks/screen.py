@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 
 import anthropic
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from senthire import PIPELINE_VERSION
@@ -467,7 +468,16 @@ def screen_application(run_id: str, application_id: str) -> dict:
         stage_reached = _persist_light_evaluation(
             session, run, spec, app, profile_row, det, output, usage, light_failed
         )
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            # A recovery re-kick raced a still-alive worker; the database's
+            # (run_id, application_id) uniqueness kept one row. Treat exactly
+            # like the pre-check catching it — the other worker's result stands.
+            session.rollback()
+            run = session.get(ScreeningRun, run.id)
+            _maybe_finish_light_phase(session, run)
+            return {"status": "already_evaluated"}
 
         _maybe_finish_light_phase(session, run)
         return {"status": "evaluated", "stage": stage_reached}
@@ -791,7 +801,13 @@ def poll_batch(run_id: str, stage: str, batch_id: str) -> dict:
             batches = dict(funnel.get("batch") or {})
             entry = dict(batches.get(stage) or {})
             polls = int(entry.get("polls", 0)) + 1
-            entry.update({"polls": polls, "status": status})
+            entry.update({
+                "polls": polls,
+                "status": status,
+                # Heartbeat for stall detection: an hour without this stamp
+                # means the poll chain itself died (services.run_health).
+                "last_poll_at": datetime.now(UTC).isoformat(),
+            })
             batches[stage] = entry
             funnel["batch"] = batches
             run.funnel = funnel

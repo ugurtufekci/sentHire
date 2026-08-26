@@ -228,6 +228,11 @@ export const api = {
       body: JSON.stringify({ mode }),
     }),
   runStatus: (runId: string) => request<RunStatus>(`/runs/${runId}`),
+  recoverRun: (runId: string) =>
+    request<{ run_id: string; status: string; actions: string[] }>(
+      `/runs/${runId}/recover`,
+      { method: "POST" },
+    ),
   runResults: (runId: string) => request<ResultsResponse>(`/runs/${runId}/results`),
   resultDetail: (runId: string, applicationId: string) =>
     request<ResultDetail>(`/runs/${runId}/results/${applicationId}`),
