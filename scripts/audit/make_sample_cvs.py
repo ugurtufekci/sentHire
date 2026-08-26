@@ -35,7 +35,10 @@ def pdf(name: str, lines: list[str], *, scanned: bool = False) -> None:
             if y > 770:
                 page = doc.new_page()
                 y = 60
-    doc.save(OUT / name)
+    # Subset the embedded font: DejaVu carries every glyph it owns (~780 KB
+    # per file) while a CV uses a few dozen. Keeps the committed samples small.
+    doc.subset_fonts()
+    doc.save(OUT / name, garbage=4, deflate=True)
     doc.close()
 
 

@@ -50,6 +50,11 @@ services:
       SENTHIRE_SMTP_HOST: mailpit
       SENTHIRE_SMTP_PORT: 1025
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY in your shell or .env}
+      # Offline demo passthrough: SENTHIRE_FAKE_MODELS=1 on the host serves
+      # every model call from deterministic stand-ins — no key needed, no
+      # cost, demo banner in the UI (pair with any dummy ANTHROPIC_API_KEY;
+      # see DEVELOPMENT.md "Quickstart").
+      SENTHIRE_FAKE_MODELS: ${SENTHIRE_FAKE_MODELS:-0}
     ports: ["8000:8000"]
     depends_on:
       db: {condition: service_healthy}

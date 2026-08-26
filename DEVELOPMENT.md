@@ -13,6 +13,20 @@ the whole flow (signup → invite team → job → criteria → CVs → run → 
 ranking) works from the browser. Outbound email (invitations, password resets)
 lands in the Mailpit inbox at http://localhost:8025.
 
+No Anthropic API key yet? Run the offline demo instead — deterministic
+stand-in models, zero cost, and the UI marks every run as a demo:
+
+```bash
+ANTHROPIC_API_KEY=demo SENTHIRE_FAKE_MODELS=1 docker compose up --build
+# PowerShell:
+#   $env:ANTHROPIC_API_KEY="demo"; $env:SENTHIRE_FAKE_MODELS="1"; docker compose up --build
+```
+
+`sample-cvs/` in the repository holds ten ready-made test CVs for a first
+walkthrough — clean ones, a duplicate in a different format, a cover letter
+filed as a CV, a scan with no text layer, a broken file, and one carrying
+evaluator-directed instructions, because a real HR inbox has all of these.
+
 The same flow over raw HTTP, if you prefer curl:
 
 ```bash
