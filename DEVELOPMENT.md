@@ -203,8 +203,11 @@ real Anthropic API.
    calls, and it prints the first real agreement percentage. The API
    integration used from automation here cannot trigger it (no
    `actions: write`), so it must be a human click.
-3. The daily cron arms itself automatically once `drift.yml` reaches the
-   default branch (a branch-merge side effect — no action beyond merging).
+3. The daily cron is ALREADY armed: the repository's default branch carries
+   `drift.yml` (the working branch has been the default since the first
+   push). If you switch the default branch to `main` in GitHub settings, it
+   stays armed — `main` carries the same file. GitHub pauses schedules in
+   repositories with no activity for 60 days; any push resets that clock.
 4. *Optional:* prove CI turns red by pushing a deliberately failing test to
    a throwaway branch and watching the run fail. Step-failure propagation
    is GitHub's own mechanic and the silent-skip hole is already guarded, so
