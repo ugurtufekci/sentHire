@@ -46,7 +46,20 @@ jobs:
       - name: Test suite (migrations + end-to-end included)
         env:
           SENTHIRE_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/postgres
-        run: pytest
+        # The database suites skip silently when the database is unreachable —
+        # correct on a laptop, a coverage hole here. Green-with-skips in CI
+        # would mean the safety net has a hole shaped exactly like the tests
+        # that matter most, so any skip fails the build.
+        # -rs prints one "SKIPPED [n] file:line: reason" per skip regardless of
+        # quiet level; the case-insensitive grep therefore does not depend on
+        # pytest's summary-line format.
+        run: |
+          set -o pipefail
+          pytest -rs | tee pytest-output.txt
+          if grep -qi "skipped" pytest-output.txt; then
+            echo "::error::Tests were skipped in CI — the database-backed suites must actually run here."
+            exit 1
+          fi
       - name: Golden scenarios (offline, must be clean)
         run: python -m senthire.evals
 

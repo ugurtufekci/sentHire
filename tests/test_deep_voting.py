@@ -421,3 +421,45 @@ def test_batch_requests_carry_the_judge_temperature():
     expected = Settings(_env_file=None).judge_temperature
     assert light_request("c1", spec, {})["params"]["temperature"] == expected
     assert deep_request("c2", spec, {}, "raw", [])["params"]["temperature"] == expected
+
+
+def test_extractor_sends_the_judge_temperature(monkeypatch):
+    import senthire.extraction.extractor as extractor
+
+    captured = {}
+
+    class _StubClient:
+        def __init__(self):
+            self.messages = SimpleNamespace(parse=self._parse)
+
+        def _parse(self, **kwargs):
+            captured.update(kwargs)
+            response = _StubResponse()
+            response.parsed_output = None  # force the explicit failure path
+            return response
+
+    monkeypatch.setattr(extractor, "_client", lambda: _StubClient())
+    with pytest.raises(extractor.ExtractionFailed):
+        extractor._parse([{"role": "user", "content": "x"}], "m")
+    assert captured["temperature"] == Settings(_env_file=None).judge_temperature
+
+
+def test_compiler_sends_the_judge_temperature(monkeypatch):
+    import senthire.compiler.compiler as compiler
+
+    captured = {}
+
+    class _StubClient:
+        def __init__(self):
+            self.messages = SimpleNamespace(parse=self._parse)
+
+        def _parse(self, **kwargs):
+            captured.update(kwargs)
+            response = _StubResponse()
+            response.parsed_output = None  # force the explicit failure path
+            return response
+
+    monkeypatch.setattr(compiler.anthropic, "Anthropic", _StubClient)
+    with pytest.raises(compiler.CompilationFailed):
+        compiler.compile_spec(None, "En az 3 yil deneyim.", version=1, locale="tr")
+    assert captured["temperature"] == Settings(_env_file=None).judge_temperature

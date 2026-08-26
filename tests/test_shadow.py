@@ -464,3 +464,35 @@ def test_report_carries_version_stamps(make_run, monkeypatch):
     assert report.shadow_versions["vocabulary"]
     payload = report.to_json()
     assert payload["frozen_layers"] == ["extraction", "normalization"]
+
+
+def test_cli_runs_end_to_end_with_demo_models(make_run, db_url):
+    """The CLI path nobody else exercises: argparse -> session from env ->
+    the real fake-models dispatch inside light_screen -> report + JSON.
+    Diffs are expected (the demo judge is not the fixture judge); what must
+    hold is that the process succeeds and the report is coherent."""
+    import json
+    import subprocess
+    import sys
+
+    run_id, _app_ids, _outputs, _spec = make_run({"A": {}, "B": {}})
+    out_path = os.path.join(os.environ.get("TMPDIR", "/tmp"), f"shadow-{run_id}.json")
+    env = {
+        **os.environ,
+        "SENTHIRE_DATABASE_URL": db_url,
+        "SENTHIRE_FAKE_MODELS": "1",
+    }
+    proc = subprocess.run(
+        [sys.executable, "-m", "senthire.evals.shadow", str(run_id), "--json", out_path],
+        env=env, capture_output=True, text=True, timeout=120,
+    )
+    assert proc.returncode == 0, proc.stderr + proc.stdout
+    assert f"shadow of run {run_id}" in proc.stdout
+    assert "(FAKE MODELS)" in proc.stdout, "demo mode must be impossible to miss"
+    with open(out_path, encoding="utf-8") as fh:
+        payload = json.load(fh)
+    os.unlink(out_path)
+    assert payload["fake_models"] is True
+    assert payload["summary"]["candidates"] == 2
+    assert payload["summary"]["errors"] == 0
+    assert payload["baseline_versions"] == {"prompts": {"light": "baseline_v0"}}

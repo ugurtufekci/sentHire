@@ -1574,6 +1574,9 @@ def test_the_deep_analysis_stage_actually_runs(client, storage_stub, deep_models
     status = client.get(f"/api/v1/runs/{run_id}").json()
     assert status["status"] == "complete", status
     assert status["funnel"]["deep_analyzed"] == 1, status["funnel"]
+    versions = status["funnel"]["versions"]
+    assert versions["prompts"] == {"light": "screen_v1", "deep": "verify_v1"}
+    assert versions["vocabulary"] and versions["pipeline"]
 
     results = client.get(f"/api/v1/runs/{run_id}/results").json()
     deep_rows = [r for r in results["results"] if r["stage_reached"] == "deep"]
