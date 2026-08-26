@@ -17,6 +17,7 @@ from senthire.api.deps import get_current_user, get_db
 from senthire.config import get_settings
 from senthire.db.models import AuditLog, Invitation, Organization, PasswordReset, User
 from senthire.services import auth as auth_service
+from senthire.services import throttle
 from senthire.services.auth import MIN_PASSWORD_LENGTH
 from senthire.services.email import password_reset_email
 from senthire.workers.tasks.mail import enqueue_mail
@@ -73,8 +74,18 @@ def _start_session(response: Response, session: Session, user: User) -> None:
 
 @router.post("/auth/signup", status_code=201)
 def signup(
-    payload: SignupIn, response: Response, session: Session = Depends(get_db)
+    payload: SignupIn,
+    request: Request,
+    response: Response,
+    session: Session = Depends(get_db),
 ) -> dict:
+    settings = get_settings()
+    throttle.enforce_hit(
+        session,
+        throttle.scope_for("signup:ip", throttle.client_ip(request)),
+        limit=settings.throttle_signup_per_ip,
+        window_seconds=settings.throttle_signup_window_seconds,
+    )
     existing = session.scalar(select(User).where(User.email == payload.email))
     if existing is not None:
         raise HTTPException(status_code=409, detail="an account with this email already exists")
@@ -112,8 +123,31 @@ def signup(
 
 @router.post("/auth/login")
 def login(
-    payload: LoginIn, response: Response, session: Session = Depends(get_db)
+    payload: LoginIn,
+    request: Request,
+    response: Response,
+    session: Session = Depends(get_db),
 ) -> dict:
+    settings = get_settings()
+    throttle.enforce_hit(
+        session,
+        throttle.scope_for("login:ip", throttle.client_ip(request)),
+        limit=settings.throttle_login_attempts_per_ip,
+        window_seconds=settings.throttle_window_seconds,
+    )
+    account_scope = throttle.scope_for("login:email", payload.email)
+    lock = throttle.peek(
+        session,
+        account_scope,
+        limit=settings.throttle_login_failures_per_email,
+        window_seconds=settings.throttle_window_seconds,
+    )
+    if not lock.allowed:
+        # A locked account refuses even the correct password for the rest of
+        # the window — otherwise the lock only slows the guesser down until
+        # the guess lands.
+        throttle.refuse(lock)
+
     user = session.scalar(select(User).where(User.email == payload.email))
     # Same error for unknown email, wrong password, and deactivated account.
     if (
@@ -121,7 +155,14 @@ def login(
         or not user.is_active
         or not auth_service.verify_password(payload.password, user.password_hash)
     ):
+        throttle.hit(
+            session,
+            account_scope,
+            limit=settings.throttle_login_failures_per_email,
+            window_seconds=settings.throttle_window_seconds,
+        )
         raise HTTPException(status_code=401, detail="invalid email or password")
+    throttle.clear(session, account_scope)
     user.last_login_at = datetime.now(UTC)
     session.add(
         AuditLog(
@@ -197,8 +238,25 @@ def change_password(
     from. The surviving session predates the change but was authenticated with
     the old password *and* re-proved it in this request.
     """
+    settings = get_settings()
+    change_scope = throttle.scope_for("pwchange:user", str(user.id))
+    lock = throttle.peek(
+        session,
+        change_scope,
+        limit=settings.throttle_change_password_failures,
+        window_seconds=settings.throttle_window_seconds,
+    )
+    if not lock.allowed:
+        throttle.refuse(lock)
     if not auth_service.verify_password(payload.current_password, user.password_hash):
+        throttle.hit(
+            session,
+            change_scope,
+            limit=settings.throttle_change_password_failures,
+            window_seconds=settings.throttle_window_seconds,
+        )
         raise HTTPException(status_code=403, detail="mevcut parola hatalı")
+    throttle.clear(session, change_scope)
     user.password_hash = auth_service.hash_password(payload.new_password)
     current_token = request.cookies.get(get_settings().session_cookie_name)
     auth_service.revoke_all_sessions(session, user.id, keep_token=current_token)
@@ -221,9 +279,23 @@ def _mask_email(email: str) -> str:
 
 
 @router.post("/auth/forgot-password")
-def forgot_password(payload: ForgotPasswordIn, session: Session = Depends(get_db)) -> dict:
+def forgot_password(
+    payload: ForgotPasswordIn, request: Request, session: Session = Depends(get_db)
+) -> dict:
     """Always 200 with the same body, so responses don't reveal which emails exist."""
     settings = get_settings()
+    throttle.enforce_hit(
+        session,
+        throttle.scope_for("forgot:ip", throttle.client_ip(request)),
+        limit=settings.throttle_forgot_per_ip,
+        window_seconds=settings.throttle_window_seconds,
+    )
+    throttle.enforce_hit(
+        session,
+        throttle.scope_for("forgot:email", payload.email),
+        limit=settings.throttle_forgot_per_email,
+        window_seconds=settings.throttle_window_seconds,
+    )
     user = session.scalar(select(User).where(User.email == payload.email))
     if user is not None and user.is_active:
         now = datetime.now(UTC)
@@ -287,9 +359,17 @@ def password_reset_lookup(token: str, session: Session = Depends(get_db)) -> dic
 def reset_password(
     token: str,
     payload: ResetPasswordIn,
+    request: Request,
     response: Response,
     session: Session = Depends(get_db),
 ) -> dict:
+    settings = get_settings()
+    throttle.enforce_hit(
+        session,
+        throttle.scope_for("reset:ip", throttle.client_ip(request)),
+        limit=settings.throttle_reset_attempts_per_ip,
+        window_seconds=settings.throttle_window_seconds,
+    )
     reset, user = _load_open_reset(session, token)
     user.password_hash = auth_service.hash_password(payload.password)
     user.last_login_at = datetime.now(UTC)

@@ -226,6 +226,16 @@ this mode.
 
 ## Auth & workspaces (B2B tenancy)
 
+Abuse pacing (`services/throttle.py`, migration 0012): login failures lock
+the account for the window (5 per 15 min by default — the lock refuses even
+the correct password), per-IP ceilings pace credential spraying, signup
+bursts, forgot-password bombing and reset-token guessing, and a successful
+login or password change clears its own meter. Counters are database rows
+keyed by hashed scopes (no raw addresses), shared by every API process.
+Behind a reverse proxy set `SENTHIRE_TRUST_FORWARDED_FOR=1` so the client
+address comes from `X-Forwarded-For`; without it every visitor would share
+the proxy's bucket. All knobs are `SENTHIRE_THROTTLE_*` settings.
+
 The signup unit is the **company**: the first user creates the organization
 (workspace) and becomes its admin. Colleagues never sign up separately — an admin
 creates an invitation on the **Ekip** page and shares the link; accepting it adds

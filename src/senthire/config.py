@@ -86,6 +86,24 @@ class Settings(BaseSettings):
     # Used to build invitation links shown to admins.
     app_base_url: str = "http://localhost:3000"
 
+    # --- auth abuse throttling (services.throttle) ---
+    # Windows are fixed; counters live in the database so every API process
+    # shares them. Login failures lock the ACCOUNT scope (a correct password
+    # is also refused while locked); the other limits pace request volume.
+    throttle_window_seconds: int = 900
+    throttle_login_failures_per_email: int = 5
+    throttle_login_attempts_per_ip: int = 30
+    throttle_forgot_per_email: int = 3
+    throttle_forgot_per_ip: int = 15
+    throttle_reset_attempts_per_ip: int = 10
+    throttle_signup_per_ip: int = 30
+    throttle_signup_window_seconds: int = 3600
+    throttle_change_password_failures: int = 5
+    # Behind a reverse proxy, take the client from X-Forwarded-For (first
+    # hop). Off by default: trusting the header without a proxy lets any
+    # client choose its own throttle bucket.
+    trust_forwarded_for: bool = False
+
     # --- outbound email (invitations, password resets) ---
     # "console" logs emails to stdout (default, zero-config dev);
     # "smtp" delivers via the SMTP settings below (Mailpit in docker-compose,

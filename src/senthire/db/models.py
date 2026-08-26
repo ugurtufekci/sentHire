@@ -425,6 +425,17 @@ class Override(Base):
     created_at: Mapped[datetime] = created_at_col()
 
 
+class AuthThrottle(Base):
+    """Fixed-window abuse counters for the auth surface (services.throttle).
+    Scope strings carry hashed identifiers, never raw addresses."""
+
+    __tablename__ = "auth_throttle"
+
+    scope: Mapped[str] = mapped_column(Text, primary_key=True)
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    count: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
 class AuditLog(Base):
     __tablename__ = "audit_log"
 
