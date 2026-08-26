@@ -163,6 +163,17 @@ that moved. Live mode reports an exact-agreement rate against
 `--min-agreement` (default 85%) plus token usage — run it before shipping prompt
 or model changes.
 
+## Offline demo mode
+
+`SENTHIRE_FAKE_MODELS=1` serves every model call from `senthire.demo` instead
+of the Anthropic API: extraction reads the real vocabulary tables, screening
+returns deterministic verdicts, and no key or network is needed. Pair it with
+`SENTHIRE_STORAGE_BACKEND=local` and the whole product runs on a laptop with
+only Postgres and Redis. Runs started this way carry a `fake_models` stamp in
+their funnel and the UI shows a demo banner — nobody can mistake the output
+for a real screening. The browser audits under `scripts/audit/` run in exactly
+this mode.
+
 ## Auth & workspaces (B2B tenancy)
 
 The signup unit is the **company**: the first user creates the organization

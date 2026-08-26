@@ -103,3 +103,31 @@ extended thinking on Haiku stages, and long outputs anywhere (schemas cap them).
   configuration*, not new code paths.
 - Regression guard: cost-per-candidate per stage is tracked in CI against the golden
   suite; a prompt change that doubles output tokens fails the build before it ships.
+
+## 7. Judgment sampling: temperature and borderline voting
+
+Temperature is never left to the provider default. Every judge call — extraction,
+compilation, light and deep screening, the labeling oracle — runs at an explicit
+low `judge_temperature` (default 0.2): anchored scales do the real variance
+control, this trims sampling noise on top of them.
+
+The exception is deliberate. A candidate selected for deep analysis because the
+pipeline is **unsure** (borderline knockout, unverified hard requirement, low
+confidence on a heavy requirement) gets `deep_borderline_votes` independent deep
+passes (default 3) instead of one. Vote 1 runs at the judge temperature — so a
+voting run's first pass is exactly the call a non-voting run makes — and votes
+2..K sample at `deep_vote_temperature` (default 1.0), because self-consistency
+needs diverse reasoning paths, not the same path repeated.
+
+Per requirement, the majority verdict wins; the merged confidence is the
+majority's own claim tempered by its share of the pool. Three outcomes route to
+a human instead of being averaged away: a met-vs-not_met split anywhere in the
+pool, a pool with no majority, and a pool whose evidence all failed verbatim
+verification. These surface as `deep_vote_disagreement` in the review reasons,
+with the per-requirement vote counts stored on the evaluation (`deep_votes`).
+
+Scope: interactive transport only. The batch lane stays single-pass by design —
+it is the bulk cost-optimized path, and tripling it would cancel exactly the
+discount it exists for. Candidates deep-analyzed merely for ranking near the top
+("decision_band") also stay single-pass: the extra spend goes where the
+uncertainty is, which is the only place it buys anything.

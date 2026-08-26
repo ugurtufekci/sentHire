@@ -47,6 +47,7 @@ from senthire.screening.llm import ScreeningCallFailed, deep_analyze, light_scre
 from senthire.screening.pricing import estimate_usd
 from senthire.screening.schemas import DeepAnalysisOutput, LightScreenOutput
 from senthire.screening.selection import Preliminary, select_for_deep
+from senthire.screening.voting import deep_vote, vote_count
 from senthire.workers.celery_app import celery_app
 
 TRANSIENT = (anthropic.RateLimitError, anthropic.InternalServerError, anthropic.APIConnectionError)
@@ -613,6 +614,7 @@ def _persist_deep_evaluation(
     profile_row: CandidateProfileRow,
     output,
     usage,
+    vote_meta: dict | None = None,
 ) -> int:
     """Verify + re-merge + re-score one deep result. Shared by both transports."""
     settings = get_settings()
@@ -643,7 +645,7 @@ def _persist_deep_evaluation(
     models_used["deep"] = settings.deep_analysis_model
 
     deep_reasons = (run.funnel or {}).get("deep_reasons", {}).get(str(ev.application_id), [])
-    ev.result = build_result_document(
+    result_doc = build_result_document(
         spec,
         verdicts,
         score_result,
@@ -654,6 +656,14 @@ def _persist_deep_evaluation(
         evidence_stats=evidence_stats,
         models_used=models_used,
     )
+    if vote_meta is not None:
+        result_doc["deep_votes"] = vote_meta
+        if vote_meta.get("flagged") or vote_meta.get("vote_errors"):
+            result_doc["needs_review"] = True
+            result_doc["review_reasons"] = sorted(
+                set(result_doc.get("review_reasons", [])) | {"deep_vote_disagreement"}
+            )
+    ev.result = result_doc
     _carry_integrity(ev.result, profile_row)
     ev.stage_reached = "deep"
     ev.hard_result = "fail" if score_result.gate.status == "fail" else "pass"
@@ -716,10 +726,22 @@ def deep_application(run_id: str, application_id: str) -> dict:
         app = session.get(Application, ev.application_id)
         profile_row = _profile_for_application(session, app)
 
+        reasons = (run.funnel or {}).get("deep_reasons", {}).get(str(ev.application_id), [])
+        votes = vote_count(reasons)
         try:
-            output, usage = deep_analyze(
-                spec, profile_row.profile, profile_row.raw_text, _light_judgments(ev)
-            )
+            if votes > 1:
+                output, usages, vote_meta = deep_vote(
+                    spec, profile_row.profile, profile_row.raw_text,
+                    _light_judgments(ev), votes=votes, analyze=deep_analyze,
+                )
+                for usage in usages:
+                    _audit_llm(session, run.org_id, run.id, "deep", usage, run.mode)
+                usage = None  # every vote is already audited above
+            else:
+                output, usage = deep_analyze(
+                    spec, profile_row.profile, profile_row.raw_text, _light_judgments(ev)
+                )
+                vote_meta = None
         except ScreeningCallFailed as exc:
             _persist_deep_failure(ev, str(exc))
             session.commit()
@@ -728,7 +750,7 @@ def deep_application(run_id: str, application_id: str) -> dict:
             return {"status": "deep_failed_kept_light"}
 
         corrections = _persist_deep_evaluation(
-            session, run, spec, ev, profile_row, output, usage
+            session, run, spec, ev, profile_row, output, usage, vote_meta=vote_meta
         )
         session.commit()
 

@@ -19,6 +19,19 @@ def _norm(text: str) -> str:
     return _WS.sub(" ", text).strip().lower()
 
 
+def quotes_supported(judgment: ReqJudgment, text: str | None) -> bool:
+    """Whether every quote the judgment offers actually appears in the text.
+
+    A quote that isn't in the document isn't evidence, and a vote that rests
+    on it isn't a vote — both the labeling oracle and deep-stage voting drop
+    such judgments from their pools. A judgment offering no evidence at all
+    passes here (verification degrades it separately)."""
+    if text is None or not judgment.evidence:
+        return True
+    haystack = _norm(text)
+    return all(_norm(quote.quote) in haystack for quote in judgment.evidence if quote.quote)
+
+
 @dataclass
 class VerifiedJudgment:
     judgment: ReqJudgment

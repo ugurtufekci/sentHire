@@ -81,6 +81,7 @@ def _parse(messages: list[dict], model: str) -> tuple[ExtractedProfile, int, int
             system=prompts.EXTRACTION_SYSTEM,
             messages=messages,
             output_format=ExtractedProfile,
+            temperature=get_settings().judge_temperature,
         )
     except (anthropic.RateLimitError, anthropic.InternalServerError, anthropic.APIConnectionError):
         raise  # transient — the task layer retries with backoff (docs/08 §3)

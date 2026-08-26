@@ -40,10 +40,21 @@ def _profile_block(profile: dict) -> str:
     return json.dumps(profile, ensure_ascii=False, sort_keys=True)
 
 
-def call_model(model: str, system: str, content: list[dict], output_format, max_tokens: int):
+def call_model(
+    model: str,
+    system: str,
+    content: list[dict],
+    output_format,
+    max_tokens: int,
+    *,
+    temperature: float | None = None,
+):
     """One transport for every structured model call: production screening and
     the offline labeling oracle alike, so retries and usage accounting cannot
-    drift between them."""
+    drift between them. Temperature is always explicit (docs/07 §7): the
+    judge default when None, higher only for self-consistency votes."""
+    if temperature is None:
+        temperature = get_settings().judge_temperature
     try:
         response = anthropic.Anthropic().messages.parse(
             model=model,
@@ -51,6 +62,7 @@ def call_model(model: str, system: str, content: list[dict], output_format, max_
             system=system,
             messages=[{"role": "user", "content": content}],
             output_format=output_format,
+            temperature=temperature,
         )
     except (anthropic.RateLimitError, anthropic.InternalServerError, anthropic.APIConnectionError):
         raise  # transient — task layer retries with backoff
@@ -124,6 +136,8 @@ def deep_analyze(
     profile: dict,
     raw_text: str,
     light_judgments: list[dict],
+    *,
+    temperature: float | None = None,
 ) -> tuple[DeepAnalysisOutput, LlmUsage]:
     settings = get_settings()
     if settings.fake_models:
@@ -136,4 +150,5 @@ def deep_analyze(
         deep_content(spec, profile, raw_text, light_judgments),
         DeepAnalysisOutput,
         DEEP_MAX_TOKENS,
+        temperature=temperature,
     )

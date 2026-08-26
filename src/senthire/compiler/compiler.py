@@ -77,6 +77,7 @@ def compile_spec(
                 }
             ],
             output_format=CompilerOutput,
+            temperature=settings.judge_temperature,
         )
     except (anthropic.RateLimitError, anthropic.InternalServerError, anthropic.APIConnectionError):
         raise  # transient — task layer retries

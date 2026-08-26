@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     label_oracle_model: str = "claude-sonnet-5"
     # Offline demo: every model call is served by senthire.demo instead of the
     # API. Runs started this way are stamped so nobody can mistake the output
-    # for a real screening (docs/07 §7).
+    # for a real screening (DEVELOPMENT.md "Offline demo mode").
     fake_models: bool = False
     # ANTHROPIC_API_KEY is read from the environment by the Anthropic SDK itself.
 
@@ -112,6 +112,21 @@ class Settings(BaseSettings):
     # auto-provisioned "Dev Org" admin. Unset (None) by default so production
     # deployments are cookie-session only; docker-compose sets it for local dev.
     dev_api_key: str | None = None
+
+    # --- judgment sampling (docs/07 §7) ---
+    # Explicit temperature for every judge call: repeatability is a decision,
+    # not a provider default. Low, not zero — anchored scales do the real
+    # variance control; this trims sampling noise on top.
+    judge_temperature: float = 0.2
+    # A candidate deep-analyzed because the pipeline is UNSURE (borderline
+    # knockout, unverified hard requirement, low-confidence heavy requirement)
+    # gets this many independent deep passes; majority wins per requirement,
+    # splits go to human review. 1 disables voting. Interactive transport
+    # only — the batch path stays single-pass by design.
+    deep_borderline_votes: int = 3
+    # Votes 2..K sample here: self-consistency needs diverse reasoning paths,
+    # not the same path repeated.
+    deep_vote_temperature: float = 1.0
 
     # One label per prompt component, stamped onto everything that component
     # produces. Bound to the actual prompt text by senthire.prompt_registry —

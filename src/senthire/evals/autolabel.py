@@ -29,6 +29,7 @@ from senthire.evals.corpus import AutoLabel, CorpusCase
 from senthire.evals.document import profile_document
 from senthire.screening import llm, prompts
 from senthire.screening.deterministic import run_deterministic_stage
+from senthire.screening.evidence import quotes_supported
 from senthire.screening.schemas import LightScreenOutput, ReqJudgment
 
 # Framings chosen to disagree when a case is genuinely borderline, and to agree
@@ -63,19 +64,6 @@ class LabelingReport:
     unanimous: int = 0
     adjudicate: int = 0
     dropped_evidence: int = 0
-
-
-def _quotes_supported(judgment: ReqJudgment, text: str | None) -> bool:
-    """A quote that isn't in the document isn't evidence, and the vote that
-    rests on it isn't a label. Same discipline the product applies in Stage 6."""
-    if text is None or not judgment.evidence:
-        return True
-    haystack = " ".join(text.split()).lower()
-    return all(
-        " ".join(quote.quote.split()).lower() in haystack
-        for quote in judgment.evidence
-        if quote.quote
-    )
 
 
 def aggregate(votes: list[ReqJudgment], *, min_agreement: float = 1.0) -> AutoLabel:
@@ -158,7 +146,7 @@ def label_case(
         for judgment in output.judgments:
             if judgment.req_id not in per_req:
                 continue
-            if not _quotes_supported(judgment, case.text):
+            if not quotes_supported(judgment, case.text):
                 report.dropped_evidence += 1
                 continue
             per_req[judgment.req_id].append(judgment)

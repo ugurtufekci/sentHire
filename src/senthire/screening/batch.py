@@ -88,6 +88,7 @@ def light_request(custom_id: str, spec: EvaluationSpec, profile: dict) -> dict:
         "params": {
             "model": settings.light_screen_model,
             "max_tokens": LIGHT_MAX_TOKENS,
+            "temperature": settings.judge_temperature,
             "system": prompts.LIGHT_SYSTEM,
             "messages": [{"role": "user", "content": light_content(spec, profile)}],
             "output_config": {"format": output_format(LightScreenOutput)},
@@ -108,6 +109,7 @@ def deep_request(
         "params": {
             "model": settings.deep_analysis_model,
             "max_tokens": DEEP_MAX_TOKENS,
+            "temperature": settings.judge_temperature,
             "system": prompts.DEEP_SYSTEM,
             "messages": [
                 {

@@ -101,6 +101,8 @@ export const REVIEW_REASON_LABEL: Record<string, string> = {
   deep_analysis_failed: "Derin analiz hatası — ön değerlendirme korundu",
   prompt_injection_detected:
     "CV, değerlendirmeyi yönlendirmeye çalışan metin içeriyor — puana etki etmedi",
+  deep_vote_disagreement:
+    "Derin analiz oyları uyuşmadı — sınır adayı, insan kontrolü önerilir",
 };
 
 export const INJECTION_KIND_LABEL: Record<string, string> = {
